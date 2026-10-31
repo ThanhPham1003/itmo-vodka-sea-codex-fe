@@ -67,7 +67,7 @@ Không có API logout/revocation, refresh token, directory manager, status-histo
 
 ## Vị trí sử dụng hai API gợi ý
 
-- `POST /document-types/suggestions`: nút **Gợi ý bằng AI** ngay trong form thêm/sửa loại giấy tờ. Đề xuất trường và kiểm tra đặc biệt vào bản nháp, giữ severity/PII/type từ phản hồi.
-- `POST /dossier-types/{code}/comparison-rules/suggestions`: nút **Gợi ý quy tắc bằng AI** trong form loại hồ sơ đã lưu. Kiểm tra `configuration_version`, thêm đề xuất vào các quy tắc đang soạn và kiểm tra tham chiếu hiện tại trước khi hiển thị. Chưa có code thì hướng dẫn lưu loại hồ sơ trước.
+- `POST /document-types/suggestions`: nút **Gợi ý bằng AI** ngay dưới **Mô tả nhận diện giấy tờ** trong form thêm/sửa. Ghép tên hiển thị và mô tả thành `description` (tối đa 4000 byte theo logic BE), không cần nhập mô tả AI riêng. Đề xuất trường và kiểm tra đặc biệt vào bản nháp, giữ severity/PII/type từ phản hồi.
+- `POST /dossier-types/{code}/comparison-rules/suggestions`: nút **Gợi ý quy tắc bằng AI** ngay dưới **Mô tả nghiệp vụ** trong form loại hồ sơ đã lưu, dùng chung tên và mô tả để gửi `description`. Kiểm tra `configuration_version`, thêm đề xuất vào các quy tắc đang soạn và kiểm tra tham chiếu hiện tại trước khi hiển thị. Chưa có code thì hướng dẫn lưu loại hồ sơ trước.
 - Hai luồng chỉ gọi API gợi ý khi bấm nút; không tự POST/PUT lưu catalog. Chỉ **Lưu phiên bản** mới ghi cấu hình. Nút không bị giấu ở demo; hiển thị disabled và lý do cần tài khoản admin công ty.
 - Màn chờ AI bám request thật, không có phần trăm hoặc tiến độ giả; kết thúc khi trả về, lỗi hoặc timeout. AI có deadline proxy 120s/client 125s; các request khác giữ 30s/10s.

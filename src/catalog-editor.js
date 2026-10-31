@@ -124,11 +124,10 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
   const title = savedType ? `Chỉnh sửa ${isDocument ? 'loại giấy tờ' : 'loại bộ hồ sơ'}` : `Thêm ${isDocument ? 'loại giấy tờ' : 'loại bộ hồ sơ'}`;
   const description = savedType ? `Thay đổi được lưu thành phiên bản ${selected.version + 1}. Hồ sơ đang xử lý giữ nguyên cấu hình.` : 'Đặt tên và chọn nội dung phù hợp với quy trình của doanh nghiệp.';
   const context = savedType ? `<p class="editor-hint muted">Mã hiện tại: <span>${e(selected.code)}</span> · Do hệ thống tạo, được giữ nguyên khi đổi tên.</p>` : '<p class="editor-hint muted">Mã được hệ thống tạo tự động khi lưu.</p>';
-  const aiPanel=`<section class="catalog-ai-assist" aria-labelledby="catalog-ai-heading"><div class="catalog-ai-heading">${icon('sparkles')}<div><h3 id="catalog-ai-heading">${isDocument?'AI gợi ý trường trích xuất':'AI gợi ý quy tắc đối soát'}</h3><p>${isDocument?'Mô tả giấy tờ để AI đề xuất các trường và yêu cầu kiểm tra.':'AI dùng cấu hình đã lưu để đề xuất quy tắc. Gợi ý được thêm vào các quy tắc đang soạn.'}</p></div></div><label>Mô tả cho AI<textarea name="aiDescription" rows="2" maxlength="4000" placeholder="${isDocument?'Ví dụ: CCCD cần lấy họ tên, số định danh, ngày sinh và ngày hết hạn.':'Ví dụ: Đối chiếu họ tên và số định danh chủ sở hữu giữa các giấy tờ.'}" ${aiHint?'disabled':''}></textarea></label><div class="catalog-ai-actions"><button class="button ai-suggest-button" type="button" data-editor-suggest ${aiHint?'disabled':''}>${icon('sparkles')}${isDocument?'Gợi ý bằng AI':'Gợi ý quy tắc bằng AI'}</button><small>${aiHint||'Chỉ tạo bản nháp. Rà soát rồi bấm Lưu phiên bản để áp dụng.'}</small></div><p class="form-error" id="catalog-ai-error" role="alert"></p><p class="catalog-ai-result" id="catalog-ai-result" role="status" aria-live="polite"></p></section>`;
+  const aiPanel=`<section class="catalog-ai-assist" aria-labelledby="catalog-ai-heading"><div class="catalog-ai-heading">${icon('sparkles')}<div><h3 id="catalog-ai-heading">${isDocument?'AI gợi ý trường trích xuất':'AI gợi ý quy tắc đối soát'}</h3><p>${isDocument?'Mô tả giấy tờ để AI đề xuất các trường và yêu cầu kiểm tra.':'AI dùng cấu hình đã lưu để đề xuất quy tắc. Gợi ý được thêm vào các quy tắc đang soạn.'}</p></div></div><div class="catalog-ai-actions"><button class="button ai-suggest-button" type="button" data-editor-suggest ${aiHint?'disabled':''}>${icon('sparkles')}${isDocument?'Gợi ý bằng AI':'Gợi ý quy tắc bằng AI'}</button><small>${aiHint||'Chỉ tạo bản nháp. Rà soát rồi bấm Lưu phiên bản để áp dụng.'}</small></div><p class="form-error" id="catalog-ai-error" role="alert"></p><p class="catalog-ai-result" id="catalog-ai-result" role="status" aria-live="polite"></p></section>`;
   const body = `<div id="catalog-editor">
-    ${aiPanel}
     <div class="editor-section"><label>Tên hiển thị${textInput('name',selected?.name,isDocument ? 'Ví dụ: Căn cước công dân' : 'Ví dụ: Mua bán nhà đất')}</label>
-    <label>${isDocument ? 'Mô tả nhận diện giấy tờ' : 'Mô tả nghiệp vụ'}<textarea name="description" rows="3" maxlength="1200" placeholder="Mô tả mục đích và thông tin cần lưu ý…">${e(selected?.description || '')}</textarea></label>${context}</div>
+    <label>${isDocument ? 'Mô tả nhận diện giấy tờ' : 'Mô tả nghiệp vụ'}<textarea name="description" rows="3" maxlength="1200" placeholder="Mô tả mục đích và thông tin cần lưu ý…">${e(selected?.description || '')}</textarea></label>${aiPanel}${context}</div>
     ${isDocument ? `<section class="editor-section"><div class="editor-heading"><h3>Trường cần trích xuất</h3><button class="button small" type="button" data-editor-add="field">${icon('plus')} Thêm trường</button></div><div id="editor-fields">${fieldRows()}</div></section><section class="editor-section"><h3>Yêu cầu kiểm tra đặc biệt</h3><label>Mỗi dòng là một yêu cầu<textarea name="special" rows="3" maxlength="3000" placeholder="Ví dụ: Kiểm tra giấy tờ còn thời hạn sử dụng">${e((selected?.specialRequirements || []).map(value => typeof value === 'string' ? value : value.description || value.name || '').join('\n'))}</textarea></label></section>` : `<section class="editor-section"><div class="editor-heading"><h3>Giấy tờ trong bộ hồ sơ</h3></div><p class="editor-hint muted">Chọn giấy tờ và xác định loại bắt buộc, tùy chọn hoặc phát sinh theo điều kiện.</p>${documentChoices()}</section><section class="editor-section"><div class="editor-heading"><h3>Quy tắc đối soát</h3><button class="button small" type="button" data-editor-add="rule">${icon('plus')} Thêm quy tắc</button></div><div id="editor-rules"></div></section>`}
     <div class="notice">${icon('history')} ${demo.live?'Lưu tạo phiên bản mới trên máy chủ. Hồ sơ hiện có giữ nguyên snapshot.':'Cấu hình trong bản demo chỉ được lưu trong phiên làm việc hiện tại.'}</div>
   </div>`;
@@ -165,8 +164,10 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
 
   async function generateSuggestions(target) {
     if(aiBusy||aiHint||form.dataset.submitting||form.dataset.conflict)return;
-    const prompt=form.elements.aiDescription.value.trim()||form.elements.description.value.trim()||form.elements.name.value.trim();
-    if(!prompt){setFieldError(form.elements.aiDescription,'Nhập mô tả để AI tạo gợi ý.');form.elements.aiDescription.focus();return;}
+    const promptInput=form.elements.description;
+    const prompt=[form.elements.name.value.trim(),promptInput.value.trim()].filter(Boolean).join('\n');
+    if(!prompt){setFieldError(promptInput,'Nhập mô tả để AI tạo gợi ý.');promptInput.focus();return;}
+    if(new TextEncoder().encode(prompt).length>4000){setFieldError(promptInput,'Mô tả quá dài. Hãy rút gọn để AI tạo gợi ý.');promptInput.focus();return;}
     // Capture the draft before disabling controls; failures leave it untouched.
     const previousRules=isDocument?null:readRules();
     const dialog=form.closest('.modal');
@@ -248,5 +249,5 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
       container.querySelector(`[name="${focusName}"]`)?.focus();
     }
   });
-  if(startWithAi){form.elements.aiDescription.focus();container.querySelector('.catalog-ai-assist').scrollIntoView({block:'nearest'});}
+  if(startWithAi){form.elements.description.focus();container.querySelector('.catalog-ai-assist').scrollIntoView({block:'nearest'});}
 }
