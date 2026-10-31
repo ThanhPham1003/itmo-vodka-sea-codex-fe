@@ -62,7 +62,11 @@ Health chỉ chứng minh process HTTP còn hoạt động. Nó **không** kiể
 
 Frontend gọi `GET /backend/health`. Dev server Node chuyển request tới `${BACKEND_ORIGIN}/health`, mặc định `http://127.0.0.1:8080/health`. Đây là route proxy của **frontend**, không phải endpoint mới của Go. Proxy không tạo hoặc mô phỏng kết quả thành công khi Go chưa chạy; lỗi kết nối trả `503`.
 
-`src/api.js` xác minh cả HTTP status, `code` và `data.status`, giữ request ID, xử lý timeout và JSON không hợp lệ. Khi triển khai bản build static, reverse proxy cần cấu hình `/backend/health` tương ứng; không nhúng public IP vào mã trình duyệt.
+Server frontend cũng chuyển tiếp `/api/v1/*` tới cùng backend, giữ method, query, body JSON/multipart, response status, request ID và nội dung file. Không chuyển cookie hoặc `X-Company-ID` tùy ý; tenant vẫn do backend resolve. Redirect upstream không được đi theo kèm credential. Route nghiệp vụ chưa triển khai vẫn trả `404` từ Go, hoặc `503` khi Go không chạy. Việc có proxy không có nghĩa endpoint nghiệp vụ đã được triển khai.
+
+`src/api.js` xác minh HTTP status/envelope và `data.status` của health, giữ request ID, xử lý timeout/JSON không hợp lệ. API client giữ Bearer token trong bộ nhớ, xóa credential và thông báo khi gặp `401`; `403` giữ phiên và trả lỗi quyền. Không tự retry mutation. Chưa có auth DTO nên frontend không tự dựng lời gọi đăng nhập/đăng ký từ ví dụ blueprint. Khi triển khai bằng static host thuần, reverse proxy cần cấu hình `/backend/health` và `/api/v1/*` tương ứng; Docker image frontend đã chứa proxy Node.
+
+Trang đăng nhập và đăng ký mặc định hiển thị trạng thái **đang chờ API xác thực**, không gửi credential. `?mode=demo` là lựa chọn rõ ràng để dùng dữ liệu mẫu. Đăng xuất demo xóa trạng thái trong bộ nhớ; backend chưa công bố API thu hồi phiên/token. Không gọi một endpoint logout tự đặt tên.
 
 Envelope chung đã có trong Go:
 

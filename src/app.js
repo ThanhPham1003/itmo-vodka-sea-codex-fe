@@ -1,5 +1,9 @@
 import { demo, roles, companies } from './demo-service.js';
-import { checkHealth } from './api.js';
+import { checkHealth, apiClient } from './api.js';
+import { renderAuthPage } from './auth-view.js';
+
+const mode = new URLSearchParams(location.search).get('mode') === 'demo' ? 'demo' : 'api';
+if (mode === 'api') demo.logout();
 import { openCatalogEditor } from './catalog-editor.js';
 import { icon, escape as e, avatar, badge, empty, button, modal, closeModal, notify, trapModal, statusNames } from './ui.js';
 
@@ -142,8 +146,8 @@ function connectionPage() {
 }
 
 function authPage() {
-  const signup=state.page==='signup';
-  return `<div class="login-layout"><section class="login-copy"><a class="brand login-brand" href="#/login"><img src="/assets/logo.svg" width="36" height="36" alt=""/>folio<span>.</span></a><div><div class="eyebrow">KHÔNG GIAN HỒ SƠ DOANH NGHIỆP</div><h1>Rõ dữ liệu.<br/><span>Chắc quyết định.</span></h1><p>Từ tài liệu đầu tiên đến quyết định cuối cùng.<br/>Cùng đội ngũ làm việc trong một không gian.</p><img src="/assets/workspace.svg" width="400" height="250" alt="Minh họa quản lý tài liệu"/></div><small>Dữ liệu demo · Không sử dụng thông tin thật</small></section><section class="login-panel"><div class="login-form"><span class="demo-pill"><i></i>BẢN DEMO FRONTEND</span><h2>${signup?'Tạo không gian doanh nghiệp':'Chào mừng trở lại'}</h2><p>${signup?'Mô phỏng tạo công ty và quản trị viên đầu tiên.':'Chọn tài khoản mẫu để khám phá quy trình.'}</p><form id="auth-form">${signup?`<div class="form-grid"><label>Tên công ty<input name="name" required maxlength="100" autocomplete="organization"/></label><label>Mã số thuế<input name="businessRegistrationNumber" required maxlength="30"/></label></div><label>Tên pháp lý công ty<input name="legalName" required maxlength="140" autocomplete="organization"/></label><label>Tên người đại diện<input name="adminName" required maxlength="80" autocomplete="name"/></label><label>Email quản trị<input name="adminEmail" required type="email" autocomplete="email"/></label><label>Tên đăng nhập<input name="username" required maxlength="40" autocomplete="username"/></label><label>Mật khẩu minh họa<input name="password" required type="password" minlength="8" autocomplete="new-password"/></label>`:`<label>Công ty của tài khoản<select name="companyId">${optionList(companies,companies[0]?.id)}</select></label><label>Tài khoản mẫu<select name="role">${Object.entries(roles).filter(([r])=>r!=='platform_admin').map(([role,label])=>`<option value="${role}">${e(label)}</option>`).join('')}</select></label>`}<div class="notice">${icon('help')} Backend chưa có API đăng nhập / đăng ký. Phiên demo chỉ nằm trong bộ nhớ, không lưu mật khẩu.</div><p class="form-error" id="auth-error" role="alert"></p><button class="button primary full" type="submit">${signup?'Tạo công ty mô phỏng':'Vào không gian demo'} ${icon('arrow')}</button></form><p class="auth-switch">${signup?'Đã có không gian?':'Chưa có công ty?'} <button class="text-link" data-auth="${signup?'login':'signup'}">${signup?'Đăng nhập demo':'Tạo không gian mới'}</button></p></div></section></div>`;
+  document.title = (state.page === 'signup' ? 'Đăng ký' : 'Đăng nhập') + ' · Folio';
+  return renderAuthPage({page:state.page,mode,companies,roles});
 }
 
 function route() {
@@ -181,8 +185,9 @@ function decisionDialog(decision) {
 }
 const actions={
   'close-modal':closeModal,
+  'enter-demo':()=>{const url=new URL(location.href);url.searchParams.set('mode','demo');url.hash='/dashboard';location.assign(url);},
   mobile:()=>{state.mobile=!state.mobile;render();},
-  account:()=>modal('Tài khoản hiện tại',`${session().name} · ${company()?.name}`,`<div class="account-role">${avatar(session().name,1)}<div><strong>${e(roles[session().role])}</strong><p>Tài khoản thuộc duy nhất công ty hiện tại.</p></div></div><div class="notice">Để trải nghiệm công ty hoặc vai trò khác, đăng xuất và chọn tài khoản demo khác.</div>`,'Đăng xuất',()=>{demo.logout();closeModal();state.revealed.clear();state.original.clear();resetFilters();navigate('login');}),
+  account:()=>modal('Tài khoản hiện tại',`${session().name} · ${company()?.name}`,`<div class="account-role">${avatar(session().name,1)}<div><strong>${e(roles[session().role])}</strong><p>Tài khoản thuộc duy nhất công ty hiện tại.</p></div></div><div class="notice">Để trải nghiệm công ty hoặc vai trò khác, đăng xuất và chọn tài khoản demo khác.</div>`,'Đăng xuất',()=>{apiClient.clearSession();demo.logout();closeModal();state.revealed.clear();state.original.clear();resetFilters();navigate('login');}),
   guide:()=>modal('Một quy trình, rõ từng bước','Từ tài liệu đầu tiên đến quyết định cuối cùng.','<ol class="help-list"><li>Tạo hồ sơ từ loại bộ hồ sơ của công ty.</li><li>Tiếp nhận tài liệu theo nhiều đợt; xem trạng thái riêng từng tệp.</li><li>Chuyên viên phân loại, kiểm tra trích xuất và sửa có lý do.</li><li>Xử lý sai lệch và xác nhận cảnh báo.</li><li>Ghi quyết định duyệt, từ chối hoặc yêu cầu bổ sung.</li><li>Theo dõi nhật ký, lịch sử trạng thái và lượt xem PII.</li></ol><div class="notice">Toàn bộ nghiệp vụ hiện là mô phỏng. Backend mới triển khai health. Tải lại trang đặt lại dữ liệu mẫu.</div>','Đã hiểu',closeModal),
   notifications:()=>modal('Công việc trong không gian',company()?.name,`<p>${count('VALID_DOCUMENT')} hồ sơ chờ kiểm duyệt.</p><p>${count('MISSING_DOCUMENT')} hồ sơ thiếu giấy tờ.</p><p>${count('INVALID_DOCUMENT')} hồ sơ có sai lệch.</p>`,'Xem hồ sơ',()=>{closeModal();resetFilters();navigate('dossiers');}),
   create:()=>modal('Tạo hồ sơ mới','Checklist được tạo từ phiên bản cấu hình hiện tại.',`${formLabel('Tên gợi nhớ của hồ sơ','name','','required maxlength="100" placeholder="Ví dụ: Căn hộ Thảo Điền – Nguyễn Văn An"')}<label>Loại bộ hồ sơ<select name="typeCode" required>${optionList(demo.listDossierTypes(),'','name','code')}</select></label><label>Chuyên viên phụ trách<select name="assigneeId"><option value="">Chưa phân công</option>${optionList(members().filter(m=>m.status==='active'&&['legal_specialist','company_admin'].includes(m.role)),'')}</select></label>`,'Tạo hồ sơ',data=>{const d=demo.createDossier({name:data.get('name').trim(),typeCode:data.get('typeCode'),assigneeId:data.get('assigneeId')||null});closeModal();navigate('detail',d.id);notify('Đã tạo hồ sơ mới.');}),
@@ -211,8 +216,9 @@ function memberDialog(id) {
 document.addEventListener('click',async event=>{
   const el=event.target.closest('button');if(!el||el.disabled)return;
   try {
+    if(el.dataset.action==='toggle-password'){const input=document.getElementById(el.dataset.target);if(input){input.type=input.type==='password'?'text':'password';el.setAttribute('aria-pressed',String(input.type==='text'));el.setAttribute('aria-label',(input.type==='text'?'Ẩn':'Hiện')+' mật khẩu');}return;}
     if(el.dataset.action){await actions[el.dataset.action]?.();return;}
-    if(el.dataset.auth){state.page=el.dataset.auth;render();return;}
+    if(el.dataset.auth){navigate(el.dataset.auth);return;}
     if(el.dataset.page){resetFilters();navigate(el.dataset.page);return;}
     if(el.dataset.open){navigate('detail',el.dataset.open);return;}
     if(el.dataset.review){navigate('detail',el.dataset.review,'issues');return;}
@@ -242,9 +248,11 @@ document.addEventListener('input',event=>{
   if(event.target.id==='audit-search'){state.search=event.target.value;guarded(()=>{document.querySelector('#audit-results').innerHTML=auditRows(demo.audit({action:state.auditAction,search:state.search}));});}
 });
 document.addEventListener('submit',event=>{
+  if(event.target.id==='live-auth-form'){event.preventDefault();notify('Backend chưa triển khai API xác thực.');return;}
   if(event.target.id!=='auth-form')return;event.preventDefault();const data=new FormData(event.target);
-  try {if(state.page==='signup'){demo.registerCompany(Object.fromEntries(data));}else demo.login(data.get('companyId'),data.get('role'));resetFilters();navigate(can('dashboard:read')?'dashboard':'dossiers');notify('Đã vào không gian demo.');}catch(error){document.querySelector('#auth-error').textContent=error.message;}
+  try {if(state.page==='signup'){if(data.get('password')!==data.get('confirmPassword'))throw new Error('Mật khẩu xác nhận không khớp.');demo.registerCompany(Object.fromEntries(data));}else demo.login(data.get('companyId'),data.get('role'));resetFilters();navigate(can('dashboard:read')?'dashboard':'dossiers');notify('Đã vào không gian demo.');}catch(error){document.querySelector('#auth-error').textContent=error.message;}
 });
 document.addEventListener('keydown',trapModal);
-window.addEventListener('hashchange',route);
+window.addEventListener('hashchange',()=>{if(!location.hash||location.hash.startsWith('#/'))route();});
+window.addEventListener('folio:unauthenticated',()=>{demo.logout();state.revealed.clear();state.original.clear();closeModal();navigate('login');notify('Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.');});
 route();

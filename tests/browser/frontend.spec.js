@@ -4,7 +4,7 @@ async function nav(page,name){
   if(await page.locator('.mobile-toggle').isVisible())await page.getByRole('button',{name:'Mở menu',exact:true}).click();
   await page.locator('.sidebar').getByRole('button',{name,exact:true}).click();
 }
-test.beforeEach(async({page})=>{await page.goto('/');});
+test.beforeEach(async({page})=>{await page.goto('/?mode=demo');});
 test('dashboard and all permitted screens render without errors or horizontal overflow',async({page},info)=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await expect(page.getByRole('heading',{name:/Xin chào/})).toBeVisible();
@@ -98,7 +98,8 @@ test('company registration creates an empty tenant and only one admin',async({pa
   await page.getByRole('textbox',{name:'Tên người đại diện'}).fill('Nguyễn Văn An');
   await page.getByRole('textbox',{name:'Email quản trị'}).fill('new-admin@example.test');
   await page.getByRole('textbox',{name:'Tên đăng nhập'}).fill('newadmin');
-  await page.getByLabel('Mật khẩu minh họa').fill('demo-password-123');
+  await page.getByLabel('Mật khẩu minh họa',{exact:true}).fill('demo-password-123');
+  await page.getByLabel('Xác nhận mật khẩu minh họa',{exact:true}).fill('demo-password-123');
   await page.getByRole('button',{name:'Tạo công ty mô phỏng'}).click();
   await expect(page.getByRole('heading',{name:/Xin chào/})).toBeVisible();
   await nav(page,'Thành viên');
