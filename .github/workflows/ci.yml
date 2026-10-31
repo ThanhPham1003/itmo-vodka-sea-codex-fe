@@ -1,0 +1,188 @@
+name: Frontend CI and Docker Hub
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Check, unit tests, browser tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Check source
+        run: npm run check
+
+      - name: Run unit and HTTP tests
+        run: npm test
+
+      - name: Install Chrome and system dependencies
+        run: npx playwright install --with-deps chrome
+
+      - name: Run desktop and mobile browser tests
+        run: npm run test:e2e -- --reporter=line,html
+        env:
+          CI: true
+
+      - name: Build static frontend
+        run: npm run build
+
+      - name: Upload static build
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload browser report and screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-browser-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  container:
+    name: Build and smoke-test runtime image
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build local test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: sea-codex-frontend:ci
+          cache-from: type=gha,scope=sea-codex-frontend
+          cache-to: type=gha,mode=max,scope=sea-codex-frontend
+
+      - name: Check non-root runtime and static files
+        run: |
+          docker run --rm --entrypoint /bin/sh sea-codex-frontend:ci -c \
+            'test "$(id -u)" = "10001" && test -r /app/public/index.html && test -r /app/scripts/server.mjs'
+
+      - name: Smoke-test static frontend and health proxy
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker logs folio-frontend-ci || true
+            docker rm -f folio-frontend-ci folio-backend-ci >/dev/null 2>&1 || true
+            docker network rm folio-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker network create folio-ci
+          docker run --detach --name folio-backend-ci --network folio-ci \
+            --network-alias backend --entrypoint node sea-codex-frontend:ci \
+            -e 'require("node:http").createServer((req,res)=>{res.writeHead(200,{"Content-Type":"application/json","X-Request-ID":"b09fefb1-75d9-4b4f-9041-a202e93c5fc3"});res.end(JSON.stringify({code:200,message:"Service is running",data:{status:"ok"}}));}).listen(8080,"0.0.0.0")'
+          docker run --detach --name folio-frontend-ci --network folio-ci \
+            --publish 127.0.0.1:41874:8080 sea-codex-frontend:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:41874/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:41874/ | grep -q 'src/app.js'
+          curl --fail --silent http://127.0.0.1:41874/src/styles.css >/dev/null
+          curl --fail --silent http://127.0.0.1:41874/backend/health | \
+            node -e 'let body="";process.stdin.on("data",chunk=>body+=chunk);process.stdin.on("end",()=>{const result=JSON.parse(body);if(result.code!==200||result.data?.status!=="ok")process.exit(1);});'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:41874/.git/config)" = "404"
+
+  publish:
+    name: Publish optional multi-platform Docker Hub image
+    needs: [test, container]
+    if: >-
+      github.event_name != 'pull_request' &&
+      vars.PUBLISH_DOCKERHUB == 'true' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate Docker Hub configuration
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [[ -z "$DOCKERHUB_USERNAME" || -z "$DOCKERHUB_TOKEN" ]]; then
+            echo "::error::Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets before enabling PUBLISH_DOCKERHUB."
+            exit 1
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate image tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_REPOSITORY || 'sea-codex-frontend' }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=long
+            type=ref,event=tag
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=sea-codex-frontend
+          cache-to: type=gha,mode=max,scope=sea-codex-frontend
