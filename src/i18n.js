@@ -7,6 +7,8 @@ Kiểm duyệt|Review
 Thành viên|Members
 Cấu hình hồ sơ|Dossier settings
 Nhật ký hoạt động|Activity log
+Hệ thống|System
+Thành viên không còn khả dụng|Unavailable member
 Kết nối backend|Backend connection
 Chi tiết hồ sơ|Dossier details
 KHÔNG GIAN LÀM VIỆC|WORKSPACE
