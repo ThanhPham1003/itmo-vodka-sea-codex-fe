@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemo, companies } from '../src/demo-service.js';
 
+test('intake reports local milestones for success and individual validation errors',async()=>{
+  const demo=createDemo();const d=demo.createDossier({name:'Tiến trình',typeCode:demo.listDossierTypes()[0].code});const updates=[];
+  const results=await demo.upload(d.id,[new File(['sample'],'sample.pdf',{type:'application/pdf'}),new File(['bad'],'bad.exe')],'cccd',{onProgress:update=>updates.push(update)});
+  assert.deepEqual(updates.filter(u=>u.index===0).map(u=>u.percent),[5,20,60,100]);
+  assert.equal(updates.findLast(u=>u.index===1).percent,100);
+  assert.match(updates.findLast(u=>u.index===1).error,/PDF/);
+  assert.deepEqual(results.map(r=>r.success),[true,false]);
+});
+
 test('tenant scope and platform role cannot access tenant dossiers', () => {
   const demo=createDemo();const ap=demo.listDossiers()[0];
   demo.login(companies[1].id,'company_admin');

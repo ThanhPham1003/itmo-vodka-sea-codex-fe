@@ -12,6 +12,20 @@ const reply = (status = 200, data = { ready:true }, message = 'Fixture response'
 );
 const headersOf = init => new Headers(init.headers);
 
+test('fetch is invoked with the browser global receiver',async()=>{
+  const client=new ApiClient({fetchImpl:async function(){assert.equal(this,globalThis);return reply();}});
+  assert.equal((await client.request(fixturePath)).status,200);
+});
+
+test('request activity tracks concurrent responses and returns to idle after an error',async()=>{
+  const pending=[],responses=[];
+  const client=new ApiClient({onRequestStateChange:state=>pending.push(state.pending),fetchImpl:()=>new Promise(resolve=>responses.push(resolve))});
+  const first=client.request(fixturePath),second=client.request(fixturePath);
+  responses[0](reply());await first;
+  responses[1](reply(503,null,'Fixture unavailable'));await assert.rejects(second,ApiError);
+  assert.deepEqual(pending,[1,2,1,0]);
+});
+
 test('API client keeps requests same-origin and inside the allowed API routes', async () => {
   let calls = 0;
   const client = new ApiClient({ fetchImpl:async () => { calls++; return reply(); } });

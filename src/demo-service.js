@@ -266,24 +266,29 @@ export function createDemo() {
       reconcile(dossier);getStore().dossiers.unshift(dossier);log(dossier,'CREATE_DOSSIER','Tạo hồ sơ theo phiên bản cấu hình '+type.version);return dto(dossier);
     },
     assign(dossierId,assigneeId){requirePermission('dossier:assign');const d=findDossier(dossierId),target=memberById(assigneeId);if(!target||target.status!=='active')throw new Error('Người được phân công phải đang hoạt động trong công ty.');d.assigneeId=assigneeId;log(d,'ASSIGN_DOSSIER','Phân công hồ sơ cho '+target.name);return dto(d);},
-    async upload(dossierId,files,documentTypeCode=''){
+    async upload(dossierId,files,documentTypeCode='',{onProgress=()=>{}}={}){
       requirePermission('dossier:upload');const d=findDossier(dossierId);writable(d);
       const actorKey=session.companyId+':'+session.userId;
       const list=Array.from(files);if(!list.length)throw new Error('Chọn ít nhất một tệp.');if(list.length>10)throw new Error('Tối đa 10 tệp trong một đợt tiếp nhận.');
       if(documentTypeCode&&!d.checklist.some(c=>c.code===documentTypeCode))throw new Error('Loại giấy tờ không thuộc cấu hình hồ sơ.');
       const batch=Math.max(0,...d.files.map(f=>f.batch))+1;
       const results=[];
-      for(const file of list){
+      for(const [index,file] of list.entries()){
+        const progress=(percent,stage,error=null)=>onProgress({index,name:file.name,percent,stage,error,total:list.length});
         try{
+          await progress(5,'Kiểm tra định dạng và dung lượng');
           if(!file.size)throw new Error('Tệp rỗng.');if(file.size>20*1024*1024)throw new Error('Tệp vượt quá 20 MiB.');
           if(!/\.(pdf|jpe?g|png)$/i.test(file.name)||file.type&&!['application/pdf','image/jpeg','image/png'].includes(file.type))throw new Error('Chỉ nhận PDF, JPEG hoặc PNG.');
-          const bytes=await file.arrayBuffer();const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
+          await progress(20,'Đọc tệp trên thiết bị');
+          const bytes=await file.arrayBuffer();await progress(60,'Kiểm tra nội dung trùng lặp');
+          const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
           if(!session||session.companyId+':'+session.userId!==actorKey)throw new Error('Phiên làm việc đã thay đổi; vui lòng thử tải lại.');
           if(d.files.some(f=>f._hash===hash))throw new Error('Tệp trùng nội dung với tài liệu đã tiếp nhận.');
           const schema=documentTypeCode?schemaFor(d,documentTypeCode):null;
           const uploaded={id:id(),name:file.name,typeCode:documentTypeCode,typeName:schema?.name||'Chưa phân loại',status:schema?'EXTRACTED':'UNKNOWN',confidence:schema?.96:0,batch,sourcePages:[1],fields:schema?makeFileFields(d,documentTypeCode):[],_hash:hash,error:null};
           d.files.push(uploaded);results.push({name:file.name,id:uploaded.id,status:uploaded.status,success:true});
-        }catch(error){results.push({name:file.name,status:'FAILED',success:false,error:error.message});}
+          await progress(100,'Hoàn tất tiếp nhận mô phỏng');
+        }catch(error){results.push({name:file.name,status:'FAILED',success:false,error:error.message});await progress(100,'Tiếp nhận thất bại',error.message);}
       }
       if(results.some(r=>r.success)&&session&&session.companyId+':'+session.userId===actorKey)update(d,'UPLOAD_FILES',`Tiếp nhận đợt ${batch}: ${results.filter(r=>r.success).length} tệp mô phỏng; không chạy OCR thực tế.`);
       return results;

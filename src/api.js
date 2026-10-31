@@ -8,8 +8,9 @@ export class ApiClient {
   #accessToken = null;
   #sessionVersion = 0;
   #notified = false;
-  constructor({ fetchImpl = globalThis.fetch, timeoutMs = 10000, onUnauthenticated = () => {} } = {}) {
-    this.fetchImpl = fetchImpl; this.timeoutMs = timeoutMs; this.onUnauthenticated = onUnauthenticated;
+  #pending = 0;
+  constructor({ fetchImpl = globalThis.fetch, timeoutMs = 10000, onUnauthenticated = () => {}, onRequestStateChange = () => {} } = {}) {
+    this.fetchImpl = fetchImpl; this.timeoutMs = timeoutMs; this.onUnauthenticated = onUnauthenticated; this.onRequestStateChange=onRequestStateChange;
   }
   setAccessToken(token) {
     if (typeof token !== 'string' || !token || /\s/.test(token)) throw new ApiError('Token không hợp lệ.', 400);
@@ -34,11 +35,14 @@ export class ApiClient {
     const isJson = body !== undefined && body !== null && (Array.isArray(body) || Object.getPrototypeOf(body) === Object.prototype);
     if (isJson) { body = JSON.stringify(body); requestHeaders.set('Content-Type', 'application/json'); }
     else if (body instanceof FormData) requestHeaders.delete('Content-Type');
+    this.#pending++;
+    this.onRequestStateChange({pending:this.#pending,phase:'start',method,path:parsed.pathname});
+    try {
     const sessionVersion = this.#sessionVersion;
     let response, payload;
     const abortSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(this.timeoutMs)]) : AbortSignal.timeout(this.timeoutMs);
     try {
-      response = await this.fetchImpl(parsed.pathname + parsed.search, { method, body, headers: requestHeaders, signal: abortSignal, cache:'no-store', credentials:'omit', redirect:'error' });
+      response = await this.fetchImpl.call(globalThis,parsed.pathname + parsed.search, { method, body, headers: requestHeaders, signal: abortSignal, cache:'no-store', credentials:'omit', redirect:'error' });
     } catch {
       if (signal?.aborted) throw new ApiError('Yêu cầu đã được hủy.', 499);
       throw new ApiError(abortSignal.aborted ? 'Backend phản hồi quá thời gian chờ.' : 'Không thể kết nối backend.', 503);
@@ -61,6 +65,10 @@ export class ApiClient {
     }
     if (!response.ok) throw new ApiError(payload.message || 'Dịch vụ chưa sẵn sàng.', response.status, requestId);
     return { data:payload.data, message:payload.message, requestId, status:response.status };
+    } finally {
+      this.#pending--;
+      this.onRequestStateChange({pending:this.#pending,phase:'finish',method,path:parsed.pathname});
+    }
   }
   async health() {
     const result = await this.request('/backend/health');
@@ -70,5 +78,7 @@ export class ApiClient {
 }
 export const apiClient = new ApiClient({ onUnauthenticated: () => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('folio:unauthenticated'));
+}, onRequestStateChange: detail => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('docsense:request-state',{detail}));
 } });
 export const checkHealth = () => apiClient.health();
