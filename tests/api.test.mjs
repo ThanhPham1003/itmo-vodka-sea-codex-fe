@@ -13,6 +13,20 @@ test('health proxy preserves actual upstream envelope and request ID',async()=>{
   try{const response=await fetch(base+'/backend/health');assert.equal(response.status,200);assert.equal(response.headers.get('x-request-id'),requestId);assert.deepEqual(await response.json(),{code:200,message:'Service is running',data:{status:'ok'}});}
   finally{await close(frontend);await close(upstream);}
 });
+test('auth entry URLs redirect to hash routes without exposing arbitrary files',async()=>{
+  const server=createAppServer(),base=await listen(server);
+  try{
+    for(const [path,location] of [['/login','/#/login'],['/signup','/#/signup'],['/login?mode=demo','/?mode=demo#/login']]){
+      const response=await fetch(base+path,{redirect:'manual'});
+      assert.equal(response.status,302);assert.equal(response.headers.get('location'),location);
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      const landed=await fetch(new URL(location,base));assert.equal(landed.status,200);assert.match(await landed.text(),/src\/app.js/);
+    }
+    assert.equal((await fetch(base+'/login',{method:'POST',redirect:'manual'})).status,405);
+    assert.equal((await fetch(base+'/.env')).status,404);
+    assert.equal((await fetch(base+'/unknown-route')).status,404);
+  }finally{await close(server);}
+});
 test('no fake success for unavailable backend or business APIs; source files are not served',async()=>{
   const server=createAppServer({backend:'http://127.0.0.1:1'}),base=await listen(server);
   try{

@@ -15,13 +15,13 @@ RUN groupadd --gid 10001 app && \
 WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=8080 \
+    PORT=80 \
     STATIC_ROOT=/app/public \
     BACKEND_ORIGIN=http://backend:8080
 COPY --from=build --chown=10001:10001 /src/dist/ ./public/
 COPY --chown=10001:10001 scripts/server.mjs ./scripts/server.mjs
 USER 10001:10001
-EXPOSE 8080
+EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 STOPSIGNAL SIGTERM
