@@ -242,7 +242,12 @@ export function createBackendService(client) {
         return {document_type:doc.code,key:doc.key||old?.key||'',schema_version:doc.schema_version||old?.schema_version||cache.documents.find(item=>item.code===doc.code)?.version,
           position,required:doc.required,conditional:doc.conditional,min_count:doc.min_count||old?.min_count||1,role:doc.role??old?.role??'',trigger_reason:doc.triggerReason,condition:doc.conditional?(doc.condition??old?.condition):undefined};
       });
-      const rules=input.rules.map(rule=>({...rule,code:rule.code||'',left:{...rule.left,document_type:rule.leftType,field_key:rule.leftField},right:{...rule.right,document_type:rule.rightType,field_key:rule.rightField}}));
+      const reference=(ref,type,field)=>({document_type:type??ref?.document_type,field_key:field??ref?.field_key,role:ref?.role,subject_field:ref?.subject_field});
+      const rules=input.rules.map(rule=>({
+        code:rule.code||'',name:rule.name,
+        left:reference(rule.left,rule.leftType,rule.leftField),right:reference(rule.right,rule.rightType,rule.rightField),
+        operator:rule.operator,severity:rule.severity,message:rule.message,remediation:rule.remediation
+      }));
       const result=await saveCatalog('/dossier-types'+(input.code?'/'+key(input.code):''),{name:input.name,description:input.description,documents,rules,expected_version:current?.version||0},Boolean(input.code));
       return catalogView(result,'dossiers');
     },

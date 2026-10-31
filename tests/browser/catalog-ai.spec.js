@@ -63,6 +63,10 @@ test('comparison-rule suggestions call the selected dossier endpoint and require
   expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);expect(calls.some(call=>call.path==='/api/v1/document-types/suggestions')).toBe(false);
   await dialog.getByRole('button',{name:'Lưu phiên bản',exact:true}).click();await expect(dialog).toHaveCount(0);
   const saved=JSON.parse(calls.find(call=>call.method==='PUT').body);expect(saved.expected_version).toBe(1);expect(saved.rules).toHaveLength(2);
+  for(const rule of saved.rules) {
+    expect(Object.keys(rule).sort()).toEqual(['code','left','name','operator','right','severity']);
+    for(const ref of [rule.left,rule.right])expect(Object.keys(ref).sort()).toEqual(['document_type','field_key','role','subject_field']);
+  }
 });
 
 test('AI failure ends waiting and preserves the editable document draft',async({page})=>{
