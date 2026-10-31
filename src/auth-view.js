@@ -29,9 +29,9 @@ export function renderAuthPage({ page='login', mode='api', companies=[], roles={
   return `<div class="auth-portal ${signup?'auth-signup':''}">
     <a class="skip-link" href="#auth-main">Đến biểu mẫu ${signup?'đăng ký':'đăng nhập'}</a>
     <aside class="auth-story">
-      <a class="auth-brand" href="#/login" aria-label="Folio · Đăng nhập"><img src="/assets/logo.svg" alt="" width="34" height="34"/><span>folio<span class="auth-brand-dot">.</span></span></a>
+      <a class="auth-brand" href="#/login" aria-label="DocSense AI · Đăng nhập"><img src="/assets/logo.svg" alt="" width="34" height="34"/><span>DocSense <span class="auth-brand-dot">AI</span></span></a>
       <div class="auth-story-content"><p class="auth-eyebrow">KHÔNG GIAN HỒ SƠ DOANH NGHIỆP</p><h1>Rõ dữ liệu.<br/><span>Chắc quyết định.</span></h1><p class="auth-story-description">Từ tài liệu đầu tiên đến quyết định cuối cùng.<br/>Cùng đội ngũ làm việc trong một không gian.</p><img class="auth-illustration" src="/assets/workspace.svg" width="400" height="250" alt="Minh họa các lớp tài liệu và xác nhận xử lý"/><div class="auth-story-features"><span>${icon('folder')} Hồ sơ tập trung</span><span>${icon('shield')} Quyền truy cập rõ ràng</span><span>${icon('history')} Lịch sử minh bạch</span></div></div>
-      <small class="auth-story-footer">Folio workspace <span>·</span> Đồng hành cùng doanh nghiệp</small>
+      <small class="auth-story-footer">DocSense AI workspace <span>·</span> Đồng hành cùng doanh nghiệp</small>
     </aside>
     <main class="auth-main" id="auth-main" tabindex="-1"><div class="auth-card">
       <div class="auth-mode-badge ${demo?'demo':''}"><span></span>${demo?'KHÔNG GIAN DEMO':'TÀI KHOẢN DOANH NGHIỆP'}</div>
@@ -45,7 +45,7 @@ export function renderAuthPage({ page='login', mode='api', companies=[], roles={
         <p class="auth-form-note" id="auth-form-note">${demo?'Mọi thao tác, tài khoản và kết quả trong không gian này đều là mô phỏng.':'Đăng nhập, đăng ký và thu hồi phiên sẽ được kết nối khi backend cung cấp API.'}</p>
       </form>
       <p class="auth-switch">${signup?'Đã có không gian doanh nghiệp?':'Chưa có không gian doanh nghiệp?'} <button class="text-link" type="button" data-auth="${signup?'login':'signup'}">${signup?(demo?'Đăng nhập demo':'Đăng nhập'):'Tạo không gian mới'}</button></p>
-      ${!demo?`<div class="auth-demo-entry"><div><strong>Khám phá Folio ngay hôm nay</strong><p>Trải nghiệm quản lý hồ sơ với dữ liệu mẫu.</p></div><button class="button auth-demo-button" type="button" data-action="enter-demo">Dùng bản demo ${icon('arrow')}</button></div>`:''}
+      ${!demo?`<div class="auth-demo-entry"><div><strong>Khám phá DocSense AI ngay hôm nay</strong><p>Trải nghiệm quản lý hồ sơ với dữ liệu mẫu.</p></div><button class="button auth-demo-button" type="button" data-action="enter-demo">Dùng bản demo ${icon('arrow')}</button></div>`:''}
       <p class="auth-bottom-note">${icon('shield')} Tài khoản được giới hạn trong doanh nghiệp của mình.</p>
     </div></main>
   </div>`;

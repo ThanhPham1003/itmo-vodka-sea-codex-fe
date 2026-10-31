@@ -65,6 +65,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 5173);
   const host = process.env.HOST || '127.0.0.1';
   const server = createAppServer();
-  server.listen(port, host, () => console.log(`Folio: http://${host}:${port}`));
+  server.listen(port, host, () => console.log(`DocSense AI: http://${host}:${port}`));
   for (const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close();setTimeout(()=>process.exit(0),5000).unref();});
 }

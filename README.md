@@ -1,4 +1,4 @@
-# Folio frontend
+# DocSense AI frontend
 
 Giao diện tiếng Việt cho nền tảng xử lý hồ sơ bất động sản đa tenant. Nghiệp vụ dựa trên backend Go tại `../itmo-vodka-sea-codex-be`; giao diện áp dụng hướng xanh lá, nền trắng/xám nhạt và typography tối giản từ [theme Figma được cung cấp](https://www.figma.com/design/BD8sjYpsgePgzMuO1Yliww/?node-id=211-1738).
 

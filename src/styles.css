@@ -43,3 +43,6 @@ body{font-size:14px}.brand>span{color:var(--primary);margin-left:-8px}.avatar-bu
 /* Contain absolutely positioned screen-reader headings in locally scrolling tables. */
 .table-wrap{position:relative}.sr-only{left:0;top:0}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* DocSense AI wordmark fits the workspace navigation. */
+.sidebar .brand{font-size:24px;letter-spacing:-1px;gap:8px;white-space:nowrap}.sidebar .brand>span{color:#4caf4f}
