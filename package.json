@@ -1,11 +1,17 @@
 {
-  "name": "folio-frontend-prototype",
+  "name": "folio-frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "prototype": "node prototype/server.mjs",
-    "dev": "node prototype/server.mjs",
-    "check": "node --check prototype/app.js && node --check prototype/model.js && node --check prototype/server.mjs"
+    "dev": "node scripts/server.mjs",
+    "prototype": "node scripts/server.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
   }
 }
