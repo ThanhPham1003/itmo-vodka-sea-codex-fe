@@ -1,5 +1,7 @@
 # Kế hoạch nền tảng quản lý nhân viên và hồ sơ đa doanh nghiệp
 
+> **Kế hoạch frontend ban đầu, không còn là nguồn chuẩn.** Frontend hiện ưu tiên source và OpenAPI của backend Go. Xem [đối chiếu backend](docs/BACKEND_INTEGRATION.md) cho hiện trạng API và nghiệp vụ được dùng. Các giả định về tài khoản nhiều công ty, bàn giao/export và bộ trạng thái trong tài liệu này không được áp dụng khi mâu thuẫn với backend.
+
 ## 1. Mục tiêu và phạm vi
 
 Xây dựng nền tảng dùng chung cho nhiều doanh nghiệp. Mỗi doanh nghiệp có không gian riêng để quản lý nhân viên, phân quyền, cấu hình và xử lý hồ sơ của công ty mình.
