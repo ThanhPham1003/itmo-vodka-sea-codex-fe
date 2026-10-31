@@ -228,6 +228,7 @@ AI dùng cấu hình đã lưu để đề xuất quy tắc. Gợi ý được t
 Mô tả cho AI|Description for AI
 Chỉ tạo bản nháp. Rà soát rồi bấm Lưu phiên bản để áp dụng.|Creates a draft only. Review it and save a version to apply.
 Mô tả quá dài. Hãy rút gọn để AI tạo gợi ý.|The description is too long. Shorten it to generate AI suggestions.
+Chế độ tối|Dark mode
 Nhập mô tả để AI tạo gợi ý.|Enter a description to generate AI suggestions.
 AI đang tạo gợi ý…|AI is preparing suggestions…
 AI đang tạo gợi ý|AI is preparing suggestions

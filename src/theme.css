@@ -1,0 +1,96 @@
+/* Slate surfaces with a restrained mint accent. Source documents keep their original colors. */
+:root[data-theme=dark] {
+  color-scheme:dark;
+  --primary:#5ed9ae;
+  --primary-dark:#80e6c1;
+  --primary-pale:#173b34;
+  --ink:#edf2f7;
+  --muted:#a0afc0;
+  --border:#2b3848;
+  --surface:#172230;
+  --background:#0e1621;
+  --raised:#1d2b3b;
+  --subtle:#131e2b;
+  --input:#101b28;
+  color:#c8d3df;
+  background:var(--background);
+  scrollbar-color:#42536a var(--background);
+}
+[data-theme=dark] :is(body,.auth-portal,.auth-main,.app-shell,.content,.login-layout) {background:var(--background);color:#c8d3df}
+[data-theme=dark] :is(.sidebar,.topbar) {background:#111c29;border-color:var(--border)}
+[data-theme=dark] .sidebar {box-shadow:1px 0 0 #ffffff03}
+[data-theme=dark] :is(.panel,.stat-card,.modal,.network-wait-card,.detail-tabs,.catalog-tabs,.login-panel) {background:var(--surface);border-color:var(--border);box-shadow:0 8px 28px #00000014}
+[data-theme=dark] :is(.modal-heading,.modal-footer,.panel-heading,.panel-bottom,td,th,.editor-section,.config-row,.config-section,.catalog-rule,.task-row,.checklist-row,.field-row,.rule-row,.toolbar,.tab-bar,.page-footer,.sidebar-footer,.user-button,.auth-fieldset,.auth-story-features,.auth-demo-entry,.hero-footer,.legal-card-bottom,.audit-row,.document-item,.timeline>div,.editor-card,.catalog-ai-assist,.network-wait-card) {border-color:var(--border)}
+[data-theme=dark] :is(.panel-bottom,.modal-footer,th,.config-code,.preview-notice,.resolution,.decision-panel,.editor-rule-sources>div,.editor-empty,.rule-values>div,.source-evidence,pre,.code-block) {background:var(--subtle);color:var(--muted)}
+[data-theme=dark] .modal {box-shadow:0 24px 100px #0009;border:1px solid #3a4b60}
+[data-theme=dark] :is(.modal-backdrop,.mobile-backdrop) {background:#030812b8;backdrop-filter:blur(6px)}
+[data-theme=dark] :is(.network-wait-overlay) {background:#030812a6}
+[data-theme=dark] :is(.tenant-card,.workspace-note,.editor-card,.upload-row) {background:var(--raised);border-color:var(--border)}
+[data-theme=dark] .sidebar>.user-button {background:transparent}
+[data-theme=dark] :is(.hero,.auth-story) {background:linear-gradient(120deg,#182d36,#172637 65%,#1a2c40);border:1px solid #2b4250}
+[data-theme=dark] .hero:after {border-color:#6edab514}
+[data-theme=dark] .auth-story:after {border-color:#6edab520}
+[data-theme=dark] .auth-story::before {background:radial-gradient(ellipse at 80% 20%,#5ed9ae12,transparent 65%);opacity:1}
+[data-theme=dark] :is(.hero-label,.eyebrow,.nav-label,.hero-footer,.stat-top,.chart-label,.chart-axis,.chart-legend,.chart-grid>div span,.filter-summary,.breadcrumbs,.crumb-slash,.task-meta,.auth-eyebrow,.auth-story-footer,.auth-story-features>span,.auth-form-note,.auth-signup-note,.auth-bottom-note) {color:var(--muted)}
+/* Explicit text tiers override the original light theme's fixed colors. */
+[data-theme=dark] :is(h1,h2,h3,h4,.hero h1,.hero h2,.page-heading h1,.panel-heading h2,.section-title h2,.modal-heading h2,.editor-heading h3,.catalog-ai-heading h3,.config-section h3,.stat-value,.tenant-card strong,.user-button strong,.breadcrumbs strong,.workspace-note strong,.record-link strong,.assignee strong,.task-content strong,.checklist-row strong,.document-item strong,.field-row>strong,.rule-row strong,.timeline strong,.audit-row strong,.catalog-rule strong,.config-section .config-row>div strong,.field-table td strong,.capability-row strong,.health-state h2,.health-state h3,.decision-panel h3,.field-value>span,.account-role strong,.legal-card h2,.pipeline-item strong,.next-step h3,.auth-brand,.auth-story h1,.auth-card h2,.auth-demo-entry strong,.auth-fieldset legend,.login-form h2) {color:var(--ink)}
+[data-theme=dark] :is(label,.modal .form-body label,.form-body legend,.editor-card label,.editor-checks label.checkbox-label,.auth-field,.extraction label,.resolution label) {color:#c8d3df!important}
+[data-theme=dark] :is(.page-heading p,.panel-heading p,.section-title p,.hero p,.hero-footer,.stat-foot,.task-content small,.task-content>span,.task-meta,.date-cell,.record-link small,.type-name,.assignee,.assignee small,.detail-meta,.checklist-row small,.next-step p,.batch-row,.legal-card>small,.legal-card>p,.document-item small,.field-source,.rule-row small,.timeline p,.audit-row p,.audit-row>small,.config-row p,.catalog-section p,.version-item p,.endpoint-row small,.endpoint-note,.page-footer,.muted,.form-body p,.modal-heading p,.help-list,.pipeline-item small,.pipeline-item p,.pipeline-item>span,.auth-intro,.auth-story-description,.auth-switch,.auth-demo-entry p,.catalog-ai-actions small,.field-table td small,.auth-card p) {color:var(--muted)}
+[data-theme=dark] :is(.catalog-node>span small,.config-code,.config-code>span,.config-section .config-row>div small,.catalog-rule small,.catalog-rule p,.capability-row small,.health-state>small,.timeline-action,.field-row>small,.extraction-meta small,.rule-name small,.rule-values>div>small,.decision-panel p,.auth-switch,.editor-hint) {color:var(--muted)!important}
+[data-theme=dark] :is(td,.catalog-node,.endpoint-row,.rule-values>div>span,.queue-intro p,.queue-intro strong) {color:#c8d3df}
+[data-theme=dark] :is(input,select,textarea,.modal input,.modal select,.modal textarea,.auth-field input,.auth-field select,.editor-card input,.editor-card select,.editor-card textarea,.search-box input,.language-switch select,.extraction input,.extraction textarea,.extraction select) {background:var(--input);color:var(--ink);border-color:#3a4b60;box-shadow:inset 0 1px 2px #00000015}
+[data-theme=dark] :is(input,textarea)::placeholder {color:#7e91a6}
+[data-theme=dark] :is(input,select,textarea):disabled {background:#1b2735;color:#8899ac}
+[data-theme=dark] :is(button,a,input,select,textarea):focus-visible {outline-color:#80e6c1}
+[data-theme=dark] input[type=file]::file-selector-button {background:var(--primary-pale);color:var(--primary-dark)}
+[data-theme=dark] :is(.button,.date-chip,.pagination button) {background:var(--raised);color:#dce6ef;border-color:#3a4b60;box-shadow:0 1px 2px #0002}
+[data-theme=dark] :is(.button:hover:not(:disabled),.icon-button:hover,.pagination button:hover,.auth-password-toggle:hover) {background:#293c51;color:var(--ink);border-color:#58728e}
+[data-theme=dark] .button.primary {background:#66d9b0;color:#09271f;border-color:#66d9b0;font-weight:650;box-shadow:0 3px 12px #42c49a14}
+[data-theme=dark] .button.primary:hover:not(:disabled) {background:#8ae8c6;color:#09271f;border-color:#8ae8c6}
+[data-theme=dark] :is(.button.subtle,.ai-suggest-button,.pagination button.selected) {background:var(--primary-pale);color:var(--primary-dark);border-color:#31574c}
+[data-theme=dark] .button.danger {background:#3a232c;color:#ffb4b4;border-color:#63404c}
+[data-theme=dark] :is(.nav-item,.nav-item>.icon,.catalog-node>.icon) {color:#a8b7c8}
+[data-theme=dark] :is(.nav-item:hover,.catalog-node:hover,.task-row:hover,.checklist-row:hover,.document-item:hover,tbody tr:hover) {background:#203043}
+[data-theme=dark] :is(.nav-item.active,.catalog-node.selected,.catalog-node.active,.document-item.selected) {background:#1c3a35;color:#8de8c7}
+[data-theme=dark] .nav-item.active>.icon {color:#80e6c1}
+[data-theme=dark] .nav-item.active:before {background:#66d9b0}
+[data-theme=dark] :is(.nav-item small,.tab-bar>button span,.count-label,.config-code code,.audit-action,.method,.pending-label) {background:#273648;color:#b4c3d3}
+[data-theme=dark] :is(.nav-item.active small,.tab-bar>button.selected span) {background:#285248;color:#9deece}
+[data-theme=dark] .tab-bar>button {color:#a0afc0}
+[data-theme=dark] .tab-bar>button.selected {color:#80e6c1;border-bottom-color:#66d9b0}
+[data-theme=dark] :is(.tenant-logo,.avatar,.tone-1,.file-icon,.stat-icon,.stat-mini,.task-icon.green,.task-icon.VALID_DOCUMENT,.large-icon,.checklist-icon.green,.catalog-rule>span,.empty>.icon,.rule-icon,.audit-icon) {background:#244339;color:#96dfbf}
+[data-theme=dark] :is(.stat-icon.blue,.stat-icon.neutral,.tone-2) {background:#263e59;color:#a3c9fa}
+[data-theme=dark] :is(.stat-icon.amber,.stat-icon.orange,.task-icon,.task-icon.orange,.task-icon.MISSING_DOCUMENT,.rule-icon.WARNING) {background:#3f3526;color:#e9ca89}
+[data-theme=dark] :is(.stat-icon.red,.task-icon.INVALID_DOCUMENT,.rule-icon.BLOCKER,.tone-3) {background:#442d39;color:#f0afbf}
+[data-theme=dark] :is(.notice,.auth-demo-note,.queue-intro,.dropzone,.demo-pill,.auth-mode-badge,.version-badge,.confidence) {background:#1b332f;color:#a8d9c5;border-color:#305046}
+[data-theme=dark] :is(.notice.warning,.auth-api-status,.confidence.low,.pii-tag) {background:#352f24;color:#e7c991;border-color:#514733}
+[data-theme=dark] :is(.notice.error,.notice.error p,.notice.error strong) {background:#39252e;color:#ffb5b5;border-color:#5e3945}
+[data-theme=dark] :is(.auth-api-status strong,.auth-api-status p,.auth-api-status>.icon) {color:#e7c991}
+[data-theme=dark] .catalog-ai-assist {background:linear-gradient(110deg,#193b34,#192d38);border-color:#33584e}
+[data-theme=dark] :is(.catalog-ai-heading>.icon,.catalog-ai-assist .catalog-ai-result,.hero h1 span,.hero h2 span,.auth-story h1 span,.text-link) {color:var(--primary-dark)}
+[data-theme=dark] :is(.form-error,.field-error,.catalog-ai-assist .form-error,.auth-error.form-error) {color:#ffb4b4}
+[data-theme=dark] .badge {background:#293647;color:#c7d4e2}
+[data-theme=dark] :is(.badge.PROCESSING,.badge.UPLOADED) {background:#233b56;color:#a3c9fa}
+[data-theme=dark] :is(.badge.MISSING_DOCUMENT,.badge.PENDING_DOCUMENTS,.badge.PENDING_CONDITION,.badge.UNKNOWN,.badge.invited) {background:#3c3427;color:#eaca8b}
+[data-theme=dark] :is(.badge.INVALID_DOCUMENT,.badge.FAILED,.badge.REJECTED,.badge.OPEN) {background:#422c32;color:#f4b4b4}
+[data-theme=dark] :is(.badge.VALID_DOCUMENT,.badge.APPROVED_DOCUMENT,.badge.EXTRACTED,.badge.RESOLVED,.badge.ACKNOWLEDGED,.badge.active) {background:#234237;color:#9be0ba}
+[data-theme=dark] .badge.suspended {background:#333244;color:#c9bfdc}
+[data-theme=dark] :is(.progress,.chart-grid>div,.top-divider) {background:#2b3848}
+[data-theme=dark] .chart-bars {background:repeating-linear-gradient(to top,transparent 0,transparent 46px,#2b3848 46px,#2b3848 47px)}
+[data-theme=dark] :is(.chart-bar.APPROVED_DOCUMENT,.legend-dot.APPROVED_DOCUMENT) {background:#63caa5}
+[data-theme=dark] :is(.chart-bar.PROCESSING,.legend-dot.PROCESSING) {background:#7da5d4}
+[data-theme=dark] .document-preview {background:#111b28}
+[data-theme=dark] .source-pdf {background:#111b28}
+[data-theme=dark] #toast {background:#263b4a;color:#edf2f7;border:1px solid #456174;box-shadow:0 8px 32px #0006}
+.theme-toggle {gap:7px;border-radius:20px;padding:7px 11px;min-height:34px;line-height:1}
+.theme-toggle svg {width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.theme-toggle .theme-sun {display:none}
+.theme-toggle[aria-pressed=true] .theme-moon {display:none}
+.theme-toggle[aria-pressed=true] .theme-sun {display:block}
+[data-theme=dark] .theme-toggle {background:#213447;border-color:#3b5269;color:#dce8f6}
+.auth-main>.theme-toggle {position:absolute;top:24px;left:24px}
+@media(max-width:600px) {
+  .top-actions .theme-toggle {padding:8px;min-width:34px}
+  .top-actions .theme-toggle span {display:none}
+  .auth-main>.theme-toggle {top:16px;left:16px}
+}

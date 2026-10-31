@@ -58,11 +58,17 @@ Image publish được đặt cố định là `duongtruong0409/sea-codex-fronte
 
 ## Gợi ý AI trong cấu hình
 
-Trong **Cấu hình hồ sơ → Loại giấy tờ → Thêm loại giấy tờ**, panel **AI gợi ý trường trích xuất** có nút **Gợi ý bằng AI**, gọi `POST /api/v1/document-types/suggestions`. Kết quả điền vào bản nháp trường và yêu cầu kiểm tra; chỉ tạo cấu hình khi bấm **Lưu phiên bản**.
+Trong **Cấu hình hồ sơ → Loại giấy tờ → Thêm loại giấy tờ**, nút **Gợi ý cấu hình bằng AI** nằm ngay trong form dưới tên và mô tả, gọi `POST /api/v1/document-types/suggestions`. Kết quả điền vào bản nháp trường và yêu cầu kiểm tra; chỉ tạo cấu hình khi bấm **Lưu phiên bản**.
 
-Với loại hồ sơ đã lưu, mở **Chỉnh sửa** hoặc **Gợi ý quy tắc bằng AI**. Panel này gọi `POST /api/v1/dossier-types/{code}/comparison-rules/suggestions`, giữ các quy tắc đang soạn và thêm đề xuất vào bản nháp. Loại hồ sơ mới cần lưu trước để có mã cấu hình. Gợi ý lệch version hoặc không còn khớp trường/giấy tờ đang chọn được báo lỗi để rà soát lại.
+Trong form **Thêm loại bộ hồ sơ**, nút **Gợi ý cấu hình bằng AI** dùng tên và mô tả để gọi `POST /api/v1/dossier-types/suggestions`, điền các giấy tờ vào bản nháp để rà soát. Các nút AI chỉ xuất hiện trong form, không hiển thị ở đầu trang danh mục.
+
+Với loại hồ sơ đã lưu, mở **Chỉnh sửa** rồi bấm **Gợi ý quy tắc bằng AI** cạnh **Thêm quy tắc**. Nút này gọi `POST /api/v1/dossier-types/{code}/comparison-rules/suggestions`, giữ các quy tắc đang soạn và thêm đề xuất vào bản nháp. Gợi ý quy tắc cho loại hồ sơ mới cần lưu trước để có mã cấu hình. Gợi ý lệch version hoặc không còn khớp trường/giấy tờ đang chọn được báo lỗi để rà soát lại.
 
 Nút AI vẫn hiện trong demo kèm giải thích cần đăng nhập tài khoản công ty; API AI chỉ dành cho admin công ty. Khi chờ phản hồi, giao diện có animation AI, khóa thao tác gửi trùng và trở lại biểu mẫu khi thành công/lỗi. Bản nháp đang nhập được giữ khi AI lỗi. Proxy chờ tối đa 120 giây riêng cho gợi ý AI; client 125 giây, request thường giữ timeout hiện hành. Các chuyển động tắt theo `prefers-reduced-motion`.
+
+## Giao diện sáng/tối
+
+Nút **Chế độ tối** ở thanh trên cùng và màn đăng nhập chuyển giữa giao diện sáng và tông than xanh với điểm nhấn bạc hà. Lựa chọn lưu trong `docsense:theme`; lần đầu theo cài đặt hệ thống. Màu nền, bảng, trạng thái, biểu mẫu và sidebar được đồng bộ; ảnh/PDF chứng từ giữ màu gốc.
 
 ## Hiệu ứng và phản hồi
 

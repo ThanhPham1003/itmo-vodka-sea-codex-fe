@@ -1,3 +1,4 @@
+import { themeSwitcher } from './theme.js';
 import { escape as e, icon } from './ui.js';
 import { languageSwitcher } from './i18n.js';
 
@@ -30,7 +31,7 @@ export function renderAuthPage({ page='login', mode='api', companies=[], roles={
       <div class="auth-story-content"><p class="auth-eyebrow">KHÔNG GIAN HỒ SƠ DOANH NGHIỆP</p><h1>Rõ dữ liệu.<br/><span>Chắc quyết định.</span></h1><p class="auth-story-description">Từ tài liệu đầu tiên đến quyết định cuối cùng.<br/>Cùng đội ngũ làm việc trong một không gian.</p><img class="auth-illustration" src="/assets/workspace.svg" width="400" height="250" alt="Minh họa các lớp tài liệu và xác nhận xử lý"/><div class="auth-story-features"><span>${icon('folder')} Hồ sơ tập trung</span><span>${icon('shield')} Quyền truy cập rõ ràng</span><span>${icon('history')} Lịch sử minh bạch</span></div></div>
       <small class="auth-story-footer">DocSense AI workspace <span>·</span> Đồng hành cùng doanh nghiệp</small>
     </aside>
-    <main class="auth-main" id="auth-main" tabindex="-1">${languageSwitcher('auth-language')}<div class="auth-card">
+    <main class="auth-main" id="auth-main" tabindex="-1">${themeSwitcher()}${languageSwitcher('auth-language')}<div class="auth-card">
       <div class="auth-mode-badge ${demo?'demo':''}"><span></span>${demo?'KHÔNG GIAN DEMO':'TÀI KHOẢN DOANH NGHIỆP'}</div>
       <h2>${title}</h2><p class="auth-intro">${signup?'Bắt đầu với công ty của bạn và tài khoản quản trị đầu tiên.':demo?'Chọn công ty và tài khoản mẫu để khám phá quy trình.':'Đăng nhập để tiếp tục công việc trong không gian của bạn.'}</p>
       ${demo?`<div class="auth-demo-note" role="note">${icon('help')} Dữ liệu chỉ tồn tại trong phiên demo. Không dùng thông tin hoặc mật khẩu thật.</div>`:''}
