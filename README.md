@@ -56,6 +56,14 @@ GitHub Actions chạy kiểm tra source, unit/HTTP/API client, browser test, bui
 
 Image publish được đặt cố định là `duongtruong0409/sea-codex-frontend`, với tag `latest`, `sha-<commit>` và release `v*`. Để publish, cấu hình `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` và bật variable `PUBLISH_DOCKERHUB=true` trên GitHub.
 
+## Gợi ý AI trong cấu hình
+
+Trong **Cấu hình hồ sơ → Loại giấy tờ → Thêm loại giấy tờ**, panel **AI gợi ý trường trích xuất** có nút **Gợi ý bằng AI**, gọi `POST /api/v1/document-types/suggestions`. Kết quả điền vào bản nháp trường và yêu cầu kiểm tra; chỉ tạo cấu hình khi bấm **Lưu phiên bản**.
+
+Với loại hồ sơ đã lưu, mở **Chỉnh sửa** hoặc **Gợi ý quy tắc bằng AI**. Panel này gọi `POST /api/v1/dossier-types/{code}/comparison-rules/suggestions`, giữ các quy tắc đang soạn và thêm đề xuất vào bản nháp. Loại hồ sơ mới cần lưu trước để có mã cấu hình. Gợi ý lệch version hoặc không còn khớp trường/giấy tờ đang chọn được báo lỗi để rà soát lại.
+
+Nút AI vẫn hiện trong demo kèm giải thích cần đăng nhập tài khoản công ty; API AI chỉ dành cho admin công ty. Khi chờ phản hồi, giao diện có animation AI, khóa thao tác gửi trùng và trở lại biểu mẫu khi thành công/lỗi. Bản nháp đang nhập được giữ khi AI lỗi. Proxy chờ tối đa 120 giây riêng cho gợi ý AI; client 125 giây, request thường giữ timeout hiện hành. Các chuyển động tắt theo `prefers-reduced-motion`.
+
 ## Hiệu ứng và phản hồi
 
 Trang đăng nhập/đăng ký có nền gradient và minh họa chuyển động chậm. Chuyển trang chạy trong 360ms; card nâng 2px khi hover; sidebar giữ highlight/vạch chỉ báo. Menu mobile trượt kèm backdrop mờ, giữ focus và đóng bằng Escape. Modal, toast, loading button và lỗi validation có phản hồi rõ ràng.
