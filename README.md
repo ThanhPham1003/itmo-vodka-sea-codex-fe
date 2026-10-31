@@ -17,7 +17,7 @@ npm run dev
 
 Mở **http://127.0.0.1:5173**. Có thể đổi cổng bằng `PORT=4173 npm run dev`.
 
-Trang mặc định là **đăng nhập**; `#/signup` mở đăng ký doanh nghiệp và admin đầu tiên. Đăng ký xong đăng nhập bằng tài khoản vừa tạo. Mật khẩu mới tối thiểu 12 ký tự, tối đa 72 byte. Bearer token chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Đăng xuất xóa token và dữ liệu phiên trong frontend; backend chưa có API thu hồi token.
+Trang mặc định là **đăng nhập**; `#/signup` mở đăng ký doanh nghiệp và admin đầu tiên. Server cũng redirect `/login` và `/signup` về hash route tương ứng để link trực tiếp hoạt động. Đăng ký xong đăng nhập bằng tài khoản vừa tạo. Mật khẩu mới tối thiểu 12 ký tự, tối đa 72 byte. Bearer token chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Đăng xuất xóa token và dữ liệu phiên trong frontend; backend chưa có API thu hồi token.
 
 Chọn **Dùng bản demo** hoặc mở `/?mode=demo` để dùng màn hình mẫu. Demo không upload hoặc gọi OCR/AI và không tự thay thế dữ liệu khi API thật lỗi.
 
@@ -52,7 +52,7 @@ Browser test dùng Playwright với Google Chrome đã cài trên máy (`channel
 
 ## CI và container
 
-GitHub Actions chạy kiểm tra source, unit/HTTP/API client, browser test, build và smoke-test container trên PR/push `main`. Có thể bật publish Docker Hub sau khi kiểm tra đạt; xem [hướng dẫn CI và Docker](docs/CI.md). Docker image phục vụ cả frontend đã build và proxy API, chạy non-root. Không cần Docker Hub secret để chạy job kiểm tra.
+GitHub Actions chạy kiểm tra source, unit/HTTP/API client, browser test, build và smoke-test container trên PR/push `main`. Có thể bật publish Docker Hub sau khi kiểm tra đạt; xem [hướng dẫn CI và Docker](docs/CI.md). Docker image phục vụ frontend và proxy API tại cổng 80, chạy non-root. Compose dùng `PORT=80`, `HOST=0.0.0.0`, `BACKEND_ORIGIN=http://api:8080`; Caddy cùng network proxy gọi `sea-codex-frontend:80`. Không cần Docker Hub secret để chạy job kiểm tra.
 
 Image publish được đặt cố định là `duongtruong0409/sea-codex-frontend`, với tag `latest`, `sha-<commit>` và release `v*`. Để publish, cấu hình `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` và bật variable `PUBLISH_DOCKERHUB=true` trên GitHub.
 

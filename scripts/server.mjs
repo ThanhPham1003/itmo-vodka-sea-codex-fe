@@ -13,6 +13,12 @@ export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPat
   const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.woff2':'font/woff2' };
   return createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
+    if (url.pathname === '/login' || url.pathname === '/signup') {
+      if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
+      res.writeHead(302, { Location:'/' + url.search + '#' + url.pathname, 'Cache-Control':'no-store' });
+      res.end();
+      return;
+    }
     const health = url.pathname === '/backend/health';
     if (health || url.pathname.startsWith('/api/v1/')) {
       const jsonError = (status, message) => { res.writeHead(status, { 'Content-Type':'application/json', 'Cache-Control':'no-store' }); res.end(JSON.stringify({code:status,message,data:null})); };

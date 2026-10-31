@@ -19,7 +19,7 @@ Image dùng đúng repository **`duongtruong0409/sea-codex-frontend`**. Sau khi 
 ```bash
 docker pull duongtruong0409/sea-codex-frontend:latest
 docker run --rm --name folio-frontend \
-  --publish 127.0.0.1:4173:8080 \
+  --publish 127.0.0.1:4173:80 \
   --env BACKEND_ORIGIN=http://host.docker.internal:8080 \
   duongtruong0409/sea-codex-frontend:latest
 ```
@@ -32,9 +32,22 @@ docker build -t duongtruong0409/sea-codex-frontend:local .
 
 Mở `http://127.0.0.1:4173`. `host.docker.internal` dùng cho Docker Desktop; trên Linux có thể thêm `--add-host=host.docker.internal:host-gateway`, hoặc dùng tên service backend trong mạng Docker chung. Mặc định image gọi `http://backend:8080`.
 
-Image multi-stage chỉ chứa Node runtime, website đã build và server proxy; không chứa Playwright, `node_modules`, Git history, tài liệu nội bộ hoặc `.env`. Server bind `0.0.0.0:8080` trong container, chạy dưới UID/GID `10001:10001`. Healthcheck container chỉ kiểm tra frontend HTTP; backend mất kết nối không làm website static ngừng hoạt động.
+Image multi-stage chỉ chứa Node runtime, website đã build và server proxy; không chứa Playwright, `node_modules`, Git history, tài liệu nội bộ hoặc `.env`. Server bind `0.0.0.0:80` trong container, chạy dưới UID/GID `10001:10001`. Healthcheck dùng PORT hiện hành và chỉ kiểm tra frontend HTTP; backend mất kết nối không làm website static ngừng hoạt động.
 
 Các cấu hình runtime: `HOST`, `PORT`, `STATIC_ROOT`, `BACKEND_ORIGIN`. Địa chỉ backend nằm ở server, không đưa credential hoặc private key vào source trình duyệt/build args. Đường `/backend/health` là proxy tới endpoint Go `/health` thật; `/api/v1/*` giữ method/query/body/status từ backend. API nghiệp vụ còn thiếu vẫn trả lỗi, không dùng fallback demo.
+
+Với stack Go dùng tên service `api`, cấu hình Compose frontend như sau; Caddy và frontend cùng network `proxy`:
+
+```yaml
+ports:
+  - "127.0.0.1:8082:80"
+environment:
+  HOST: 0.0.0.0
+  PORT: "80"
+  BACKEND_ORIGIN: http://api:8080
+```
+
+Caddy dùng `reverse_proxy sea-codex-frontend:80`. Mapping port không tự đổi cổng listen của process; PORT=80 cũng dùng được để override image cũ mặc định 8080. Dùng BACKEND_ORIGIN, không dùng API_PROXY_TARGET vì server không đọc biến đó. `/login` và `/signup` redirect về `/#/login` và `/#/signup` trong bản build mới; `/` vẫn vào giao diện đăng nhập mặc định.
 
 ## Publish Docker Hub tùy chọn
 
@@ -56,6 +69,6 @@ Workflow publish image, chưa tự deploy lên VM/Kubernetes. Chưa thay đổi 
 
 ## Giới hạn kiểm chứng local
 
-Máy hiện tại không có Docker CLI/daemon và actionlint, nên chưa build/run container hoặc chạy workflow GitHub thật tại local. CI có bước build/smoke-test image trước khi cho publish. YAML được parse kiểm tra cú pháp tại local; các lệnh source/test/build được thực hiện riêng trong quá trình triển khai.
+Đợt sửa cổng 80 đã chạy `npm run check`, đủ 51 unit/HTTP tests, `npm run build` và actionlint thành công. Đã build image local và chạy trên Docker network riêng: UID 10001, PORT=80 mặc định, root 200, redirect login/signup, health proxy 200 và auth proxy 401 với backend fixture. Healthcheck runtime cũng pass. Chưa chạy lại Playwright trong đợt cấu hình này, chưa publish image hoặc áp dụng lên VM; CI vẫn chạy đầy đủ browser tests trước publish.
 
 Tham khảo chính thức: [GitHub setup-node](https://github.com/actions/setup-node), [Playwright CI](https://playwright.dev/docs/ci-intro), [Docker Build GitHub Actions](https://docs.docker.com/build/ci/github-actions/).

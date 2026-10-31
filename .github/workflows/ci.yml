@@ -115,13 +115,14 @@ jobs:
             --network-alias backend --entrypoint node duongtruong0409/sea-codex-frontend:ci \
             -e 'require("node:http").createServer((req,res)=>{res.writeHead(200,{"Content-Type":"application/json","X-Request-ID":"b09fefb1-75d9-4b4f-9041-a202e93c5fc3"});res.end(JSON.stringify({code:200,message:"Service is running",data:{status:"ok"}}));}).listen(8080,"0.0.0.0")'
           docker run --detach --name folio-frontend-ci --network folio-ci \
-            --publish 127.0.0.1:41874:8080 duongtruong0409/sea-codex-frontend:ci
+            --publish 127.0.0.1:41874:80 duongtruong0409/sea-codex-frontend:ci
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:41874/ >/dev/null; then break; fi
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:41874/ | grep -q 'src/app.js'
           curl --fail --silent http://127.0.0.1:41874/src/styles.css >/dev/null
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:41874/login)" = "302"
           curl --fail --silent http://127.0.0.1:41874/backend/health | \
             node -e 'let body="";process.stdin.on("data",chunk=>body+=chunk);process.stdin.on("end",()=>{const result=JSON.parse(body);if(result.code!==200||result.data?.status!=="ok")process.exit(1);});'
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:41874/.git/config)" = "404"
