@@ -84,3 +84,9 @@ PRODUCT_PLAN.md               Kế hoạch frontend cũ; backend được ưu ti
 ```
 
 Xem [đối chiếu backend và kế hoạch tích hợp](docs/BACKEND_INTEGRATION.md) để phân biệt endpoint chạy thật với API chỉ có trong thiết kế. Nghiệp vụ dùng đúng sáu mã trạng thái hồ sơ của backend, tenant theo `company_id`, phân quyền theo permission, audit và PII. Không đưa bàn giao/export hay tài khoản nhiều công ty của kế hoạch cũ vào luồng sản phẩm.
+
+## Trợ lý DocSense
+
+Widget hướng dẫn nằm trong workspace sau đăng nhập. Bản live gọi `/api/v1/assistant/context`, `/articles/:id`, `/chat` bằng PASETO trong bộ nhớ; key/model OpenAI chỉ đặt ở backend. Khi AI tắt, vẫn đọc được thư viện bài hướng dẫn. Bản demo dùng FAQ local có nhãn mẫu và không gọi AI. Chat không truy vấn hay thao tác hồ sơ thật; không nhập dữ liệu cá nhân/nội dung giấy tờ.
+
+Module mới: `src/assistant.js` (DOM widget), `assistant-state.js` (history/abort/session), `assistant-demo.js` (FAQ mẫu), `assistant.css`. Chat timeout 70s; Node proxy cho riêng endpoint chat tối thiểu 65s để phù hợp BE deadline tối đa 60s; các API khác giữ nguyên. Không lưu hội thoại vào localStorage. Chạy `npm test` và `npm run test:e2e -- tests/browser/assistant.spec.js` để kiểm thử.

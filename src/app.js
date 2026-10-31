@@ -4,10 +4,13 @@ import { createBackendService, catalogView, roleDefaults } from './backend-servi
 import { initI18n, languageSwitcher, getLocale } from './i18n.js';
 import { liveDocumentPreview } from './document-view.js';
 import { renderAuthPage } from './auth-view.js';
+import { createAssistantWidget } from './assistant.js';
+import { createDemoAssistant } from './assistant-demo.js';
 
 const mode = new URLSearchParams(location.search).get('mode') === 'demo' ? 'demo' : 'api';
 const live = mode === 'api';
 const demo = live ? createBackendService(apiClient) : demoService;
+const assistantWidget = createAssistantWidget({service:live?demo:createDemoAssistant(),demo:!live});
 import { openCatalogEditor } from './catalog-editor.js';
 import { icon, escape as e, avatar, badge, empty, button, modal, closeModal, notify, trapModal, statusNames, requestCloseModal, bindFormValidation, setFieldError, bindRequestLoading, setButtonLoading } from './ui.js';
 
@@ -45,6 +48,7 @@ const optionList = (items, value, labelKey='name', valueKey='id') => items.map(i
 const nav = () => navItems.filter(([, , ,permission]) => can(permission)).map(([page,glyph,label]) => `<button class="nav-item ${state.page === page || state.page === 'detail' && page === 'dossiers' ? 'active':''}" data-page="${page}" aria-label="${label}" ${state.page===page?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span>${!live&&page==='review'&&count('VALID_DOCUMENT')?`<small>${count('VALID_DOCUMENT')}</small>`:''}</button>`).join('');
 
 function render() {
+  assistantWidget.update({session:session(),locale:getLocale(),page:{name:titles[state.page]?state.page:'',tab:state.page==='detail'?state.tab:''},sessionVersion:live?apiClient.sessionVersion:0});
   const viewKey=session()?`${state.page}:${state.id}:${state.tab}:${state.catalog}`:`auth:${state.page}`;
   const entering=viewKey!==renderedView;renderedView=viewKey;
   document.body.classList.toggle('menu-open',state.mobile);
@@ -412,6 +416,7 @@ document.addEventListener('keydown',event=>{
   if(event.key==='Tab'){const items=[...document.querySelectorAll('.sidebar a[href],.sidebar button:not(:disabled)')].filter(el=>el.getClientRects().length);if(event.shiftKey&&document.activeElement===items[0]){event.preventDefault();items.at(-1)?.focus();}else if(!event.shiftKey&&document.activeElement===items.at(-1)){event.preventDefault();items[0]?.focus();}}
 });
 initI18n();
+window.addEventListener('docsense:locale-change',()=>assistantWidget.update({session:session(),locale:getLocale(),page:{name:titles[state.page]?state.page:'',tab:state.page==='detail'?state.tab:''},sessionVersion:live?apiClient.sessionVersion:0}));
 bindRequestLoading();
 window.addEventListener('hashchange',()=>{if(!location.hash||location.hash.startsWith('#/'))route();});
 window.addEventListener('docsense:conflict',()=>{state.revealed.clear();clearPreview();if(state.page==='catalog')reload();else render();});

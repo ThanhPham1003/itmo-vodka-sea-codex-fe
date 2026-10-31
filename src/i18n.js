@@ -804,6 +804,7 @@ export function setLocale(value) {
   if(!['vi','en'].includes(value))return;
   locale=value;try { localStorage.setItem('docsense:locale',locale); } catch { /* Keep the selection for this page. */ }
   localizeDocument();
+  window.dispatchEvent(new CustomEvent('docsense:locale-change',{detail:{locale}}));
 }
 export function initI18n() {
   const observer=new MutationObserver(()=>{observer.disconnect();localizeDocument();observe();});
