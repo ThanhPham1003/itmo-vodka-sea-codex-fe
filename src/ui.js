@@ -30,20 +30,92 @@ export function notify(message) {
   clearTimeout(notify.timer); notify.timer = setTimeout(() => el.classList.remove('visible'), 4200);
 }
 let returnFocus;
-export function closeModal() { document.querySelector('#modal-root').innerHTML = ''; document.body.classList.remove('modal-open'); returnFocus?.isConnected && returnFocus.focus(); }
+export function closeModal() { document.querySelector('#modal-root').innerHTML = ''; document.body.classList.remove('modal-open'); if(returnFocus?.isConnected)returnFocus.focus();else document.querySelector('#main-content')?.focus({preventScroll:true}); }
+export function requestCloseModal() {
+  if(document.querySelector('.modal[aria-busy="true"]'))return;
+  closeModal();
+}
+let fieldSequence = 0;
+export function setFieldError(field,message) {
+  if(!field)return;
+  let error=document.getElementById(field.dataset.errorId);
+  if(!error){error=document.createElement('span');error.className='field-error';error.id='field-error-'+(++fieldSequence);field.dataset.errorId=error.id;(field.closest('label,.auth-field')||field.parentElement).append(error);}
+  error.textContent=message;field.setAttribute('aria-invalid','true');
+  field.setAttribute('aria-describedby',[...new Set([...(field.getAttribute('aria-describedby')||'').split(' ').filter(Boolean),error.id])].join(' '));
+}
+function clearFieldError(field) {
+  field.removeAttribute('aria-invalid');
+  const id=field.dataset.errorId;
+  document.getElementById(id)?.remove();
+  const described=(field.getAttribute('aria-describedby')||'').split(' ').filter(value=>value&&value!==id);
+  if(described.length)field.setAttribute('aria-describedby',described.join(' '));else field.removeAttribute('aria-describedby');
+  delete field.dataset.errorId;
+}
+export function bindFormValidation(form) {
+  if(!form||form.dataset.validationBound)return;
+  form.dataset.validationBound='true';form.noValidate=true;
+  form.addEventListener('invalid',event=>{
+    const field=event.target;event.preventDefault();
+    const message=field.validity.valueMissing?'Vui lòng nhập thông tin này.':field.validity.typeMismatch&&field.type==='email'?'Nhập địa chỉ email hợp lệ.':field.validity.tooShort?`Nhập ít nhất ${field.minLength} ký tự.`:'Kiểm tra lại giá trị đã nhập.';
+    setFieldError(field,message);
+  },true);
+  const clear=event=>{const field=event.target;if(field.matches('input,select,textarea')&&field.validity.valid)clearFieldError(field);};
+  form.addEventListener('input',clear);form.addEventListener('change',clear);
+}
+const busyButtons=new WeakMap();
+export function setButtonLoading(button,busy,label='Đang xử lý…') {
+  if(!button)return;
+  if(busy){
+    if(busyButtons.has(button))return;
+    busyButtons.set(button,{html:button.innerHTML,disabled:button.disabled});button.disabled=true;
+    button.classList.add('is-loading');button.setAttribute('aria-busy','true');
+    button.innerHTML='<span class="loading-indicator" aria-hidden="true"></span><span>'+escape(label)+'</span>';
+  } else {
+    const saved=busyButtons.get(button);if(!saved)return;
+    button.innerHTML=saved.html;button.disabled=saved.disabled;button.classList.remove('is-loading');button.removeAttribute('aria-busy');busyButtons.delete(button);
+  }
+}
 export function modal(title, description, content, submitLabel, onSubmit) {
   returnFocus = document.activeElement;
   document.querySelector('#modal-root').innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-heading"><div><h2 id="modal-title">${escape(title)}</h2><p>${escape(description)}</p></div><button class="icon-button" type="button" data-action="close-modal" aria-label="Đóng">${icon('close')}</button></div><form id="modal-form"><div class="form-body">${content}</div><p class="form-error" id="form-error" role="alert"></p><div class="modal-footer"><button class="button" type="button" data-action="close-modal">Hủy</button><button class="button primary" type="submit">${escape(submitLabel)}</button></div></form></section></div>`;
   document.body.classList.add('modal-open');
-  document.querySelector('#modal-form').onsubmit = async event => {
-    event.preventDefault(); const submit = event.submitter; if (submit) submit.disabled = true;
-    try { await onSubmit(new FormData(event.target)); } catch (error) { const el = document.querySelector('#form-error'); if (el) el.textContent = error.message; else notify(error.message); } finally { if (submit?.isConnected) submit.disabled = false; }
+  const form=document.querySelector('#modal-form');bindFormValidation(form);
+  form.onsubmit = async event => {
+    event.preventDefault();if(form.dataset.submitting)return;
+    if(!form.checkValidity()){form.querySelector(':invalid')?.focus();return;}
+    const data=new FormData(form);const submit=event.submitter||form.querySelector('[type="submit"]');
+    const dialog=form.closest('.modal');form.dataset.submitting='true';dialog.setAttribute('aria-busy','true');setButtonLoading(submit,true);
+    const controls=[...dialog.querySelectorAll('input,select,textarea,button')].filter(el=>el!==submit).map(el=>({el,disabled:el.disabled}));controls.forEach(({el})=>el.disabled=true);
+    const error=form.querySelector('#form-error');if(error)error.textContent='';
+    try { await onSubmit(data); } catch (failure) { if(error?.isConnected){error.textContent=failure.message;error.scrollIntoView({block:'nearest'});}else notify(failure.message); }
+    finally { if(submit?.isConnected)setButtonLoading(submit,false);controls.forEach(({el,disabled})=>{if(el.isConnected)el.disabled=disabled;});dialog.removeAttribute('aria-busy');delete form.dataset.submitting; }
   };
-  document.querySelector('.modal input, .modal select, .modal textarea, .modal button')?.focus();
+  (form.querySelector('input:not([type="hidden"]),select,textarea')||document.querySelector('.modal button'))?.focus();
+  return form;
 }
 export function trapModal(event) {
   const el = document.querySelector('.modal'); if (!el) return false;
-  if (event.key === 'Escape') closeModal();
-  if (event.key === 'Tab') { const list = [...el.querySelectorAll('button,input,select,textarea,a[href]')].filter(x => !x.disabled); if (event.shiftKey && document.activeElement === list[0]) { event.preventDefault(); list.at(-1).focus(); } else if (!event.shiftKey && document.activeElement === list.at(-1)) { event.preventDefault(); list[0].focus(); } }
+  if (event.key === 'Escape') {event.preventDefault();requestCloseModal();}
+  if (event.key === 'Tab') { const list = [...el.querySelectorAll('button,input,select,textarea,a[href]')].filter(x => !x.disabled&&x.getClientRects().length); if(!list.length){event.preventDefault();return true;} if (event.shiftKey && document.activeElement === list[0]) { event.preventDefault(); list.at(-1).focus(); } else if (!event.shiftKey && document.activeElement === list.at(-1)) { event.preventDefault(); list[0].focus(); } }
   return true;
+}
+
+export function bindRequestLoading() {
+  const host=document.querySelector('#network-status');if(!host)return;
+  let timer,roots=[];
+  const hide=()=>{clearTimeout(timer);timer=null;host.innerHTML='';host.hidden=true;for(const [root,inert,busy]of roots){root.inert=inert;if(busy===null)root.removeAttribute('aria-busy');else root.setAttribute('aria-busy',busy);}roots=[];};
+  window.addEventListener('docsense:request-state',event=>{
+    const pending=event.detail.pending;host.dataset.pending=String(pending);
+    if(!pending){hide();return;}
+    const count=host.querySelector('.network-request-count');if(count)count.textContent=pending>1?`${pending} yêu cầu đang được xử lý`:'Đang kết nối với máy chủ';
+    if(host.querySelector('.is-visible')||timer)return;
+    timer=setTimeout(()=>{
+      timer=null;host.hidden=false;
+      roots=[document.querySelector('#app'),document.querySelector('#modal-root')].filter(Boolean).map(root=>[root,root.inert,root.getAttribute('aria-busy')]);
+      for(const [root]of roots){root.inert=true;root.setAttribute('aria-busy','true');}
+      host.innerHTML='<div class="network-wait-overlay is-visible" role="status" aria-live="polite"><div class="network-wait-card"><span class="network-brand"><img src="/assets/logo.svg" alt="" width="30" height="30"/>DocSense AI</span><span class="network-spinner" aria-hidden="true"></span><strong class="network-wait-title">Đang chờ phản hồi từ máy chủ</strong><p class="network-wait-description">Vui lòng chờ trong giây lát…</p><div class="network-skeleton" aria-hidden="true"><span></span><span></span><span></span></div><small class="network-request-count"></small></div></div>';
+      host.querySelector('.network-request-count').textContent=Number(host.dataset.pending)>1?host.dataset.pending+' yêu cầu đang được xử lý':'Đang kết nối với máy chủ';
+    },150);
+  });
+  window.addEventListener('pagehide',hide);
 }

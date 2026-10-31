@@ -1,0 +1,387 @@
+/* Shared motion and feedback. Layout remains owned by styles.css/auth.css. */
+:root {
+  --motion-quick: 180ms;
+  --motion-page: 360ms;
+  --motion-ease: cubic-bezier(.2, .7, .3, 1);
+}
+
+/* Keep the image and gradient behind readable authentication content. */
+.auth-story {
+  isolation: isolate;
+  background: #f5f7fa;
+}
+.auth-story::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at 75% 25%, #c8e6c977, transparent 58%),
+    linear-gradient(135deg, #f5f7faf5, #edf5eff0 55%, #f5f7faf5),
+    url("/assets/workspace.svg");
+  background-repeat: no-repeat;
+  background-position: 40% 30%, center, 70% 80%;
+  background-size: 135% 135%, cover, 105% auto;
+  transform: translate3d(-1%, 0, 0) scale(1.02);
+  animation: docsense-auth-background 28s ease-in-out infinite alternate;
+}
+.auth-brand,
+.auth-story-content,
+.auth-story-footer {
+  position: relative;
+  z-index: 1;
+}
+.auth-illustration {
+  transform-origin: 50% 65%;
+  animation: docsense-auth-illustration 22s ease-in-out infinite alternate;
+}
+@keyframes docsense-auth-background {
+  from { transform: translate3d(-1%, -1%, 0) scale(1.02); }
+  to { transform: translate3d(2%, 1.5%, 0) scale(1.065); }
+}
+@keyframes docsense-auth-illustration {
+  from { transform: translate3d(0, 3px, 0) rotate(-.35deg) scale(1); }
+  to { transform: translate3d(0, -7px, 0) rotate(.35deg) scale(1.018); }
+}
+
+/* Applied only when a route or document workspace changes. */
+.page-enter {
+  animation: docsense-page-in var(--motion-page) var(--motion-ease) both;
+}
+@keyframes docsense-page-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.nav-item {
+  transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+.nav-item.active::before {
+  transform-origin: center;
+  animation: docsense-nav-indicator 180ms ease-out both;
+}
+@keyframes docsense-nav-indicator {
+  from { opacity: .4; transform: scaleY(.5); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+.stat-card,
+.legal-card,
+.recent-panel,
+.workspace-note {
+  transition: transform 180ms var(--motion-ease), box-shadow 180ms ease, border-color 180ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .stat-card:hover:not(:disabled),
+  .legal-card:hover,
+  .recent-panel:hover,
+  .workspace-note:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px #2632380c;
+  }
+}
+
+.button {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.button:active:not(:disabled) { transform: translateY(1px); }
+.button.is-loading {
+  cursor: progress;
+  opacity: 1;
+}
+.loading-indicator {
+  display: inline-block;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: docsense-loading 800ms linear infinite;
+}
+@keyframes docsense-loading { to { transform: rotate(360deg); } }
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: #c65b55;
+  background: #fffafa;
+  box-shadow: 0 0 0 2px #c65b5510;
+}
+.field-error {
+  display: block;
+  color: #ad443e;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.65;
+}
+.field-error:empty { display: none; }
+
+.modal-backdrop { animation: docsense-overlay-in 180ms ease-out both; }
+.modal {
+  transform-origin: 50% 40%;
+  animation: docsense-dialog-in 180ms var(--motion-ease) both;
+}
+@keyframes docsense-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes docsense-dialog-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+#toast {
+  visibility: hidden;
+  transform: translate(-50%, 12px);
+  transition: opacity 180ms ease, transform 180ms var(--motion-ease), visibility 180ms;
+}
+#toast.visible {
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.upload-progress-list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 4px;
+}
+.upload-progress-item {
+  padding: 13px 14px;
+  background: #f8faf8;
+  border: 1px solid #e1e9e2;
+  border-radius: 6px;
+  min-width: 0;
+}
+.upload-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.upload-progress-header strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #4d4d4d;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.upload-progress-count { color: #55745a; font-size: 12px; font-variant-numeric: tabular-nums; }
+.upload-progress-track {
+  height: 5px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #e6ece7;
+  margin-top: 10px;
+}
+.upload-progress-track > i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #4caf4f;
+  transition: width 180ms linear, background-color 180ms ease;
+}
+.upload-stage {
+  display: block;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #717171;
+  margin-top: 7px;
+}
+.progress-complete .upload-stage,
+.progress-complete .upload-progress-count { color: #3c8040; }
+.progress-error { border-color: #e7c1bd; background: #fff9f8; }
+.progress-error .upload-stage,
+.progress-error .upload-progress-count { color: #ad443e; }
+.progress-error .upload-progress-track > i { background: #c65b55; }
+
+.paper-fields [data-source-field] {
+  scroll-margin: 100px;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.paper-fields [data-source-field].source-highlight,
+.paper-fields [data-source-field]:focus-visible {
+  outline: 2px solid #71ad75;
+  outline-offset: 3px;
+  background: #eaf5e4 !important;
+  box-shadow: 0 0 0 6px #4caf4f12;
+  animation: docsense-evidence-in 600ms ease-out;
+}
+.field-row.is-focused {
+  border-left: 3px solid #4caf4f;
+  padding-left: 11px;
+  background: #f5faf3;
+}
+.page-indicator { font-variant-numeric: tabular-nums; }
+@keyframes docsense-evidence-in {
+  from { box-shadow: 0 0 0 10px #4caf4f22; }
+  to { box-shadow: 0 0 0 6px #4caf4f12; }
+}
+.badge { transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease; }
+.badge.PROCESSING > i { animation: docsense-status-pulse 1.8s ease-in-out infinite; }
+@keyframes docsense-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
+body.menu-open { overflow: hidden; }
+@media (max-width: 760px) {
+  .sidebar.open { animation: docsense-drawer-in 260ms var(--motion-ease) both; }
+  .sidebar.closing { animation: docsense-drawer-out 220ms ease-in both; }
+  .mobile-backdrop {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: docsense-overlay-in 220ms ease-out both;
+  }
+  .mobile-backdrop.closing { animation: docsense-overlay-out 220ms ease-in both; }
+  .upload-progress-item { padding: 12px; }
+}
+@keyframes docsense-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes docsense-drawer-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+@keyframes docsense-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* A delayed network overlay is mounted outside the application and dialogs. */
+.network-wait-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f5f8f6dc;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.network-wait-overlay.is-visible { animation: docsense-overlay-in 180ms ease-out both; }
+.network-wait-card {
+  width: min(420px, 100%);
+  min-width: 0;
+  padding: 30px;
+  border: 1px solid #e0e9e2;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 75px #26323816;
+  text-align: center;
+}
+.network-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #263238;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.6px;
+}
+.network-brand > img { width: 28px; height: 28px; }
+.network-brand span { color: #4caf4f; }
+.network-spinner {
+  display: block;
+  width: 43px;
+  height: 43px;
+  margin: 28px auto 22px;
+  border: 3px solid #e6f2e7;
+  border-right-color: #4caf4f;
+  border-top-color: #4caf4f;
+  border-radius: 50%;
+  animation: docsense-loading 900ms linear infinite;
+}
+.network-wait-title {
+  display: block;
+  color: #4d4d4d;
+  font-size: 20px;
+  line-height: 1.5;
+  letter-spacing: -.4px;
+}
+.network-wait-description {
+  max-width: 310px;
+  margin: 10px auto 0;
+  color: #717171;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.network-skeleton {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+.network-skeleton > span {
+  display: block;
+  width: 100%;
+  height: 7px;
+  border-radius: 20px;
+  background: linear-gradient(100deg, #eef3ef 20%, #e0ece2 45%, #eef3ef 70%);
+  background-size: 220% 100%;
+  animation: docsense-skeleton 1.8s ease-in-out infinite;
+}
+.network-skeleton > span:nth-child(2) { width: 82%; animation-delay: 100ms; }
+.network-skeleton > span:nth-child(3) { width: 60%; animation-delay: 200ms; }
+.network-request-count {
+  display: block;
+  margin-top: 18px;
+  color: #7b887e;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.7;
+}
+@keyframes docsense-skeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (max-width: 560px) {
+  .network-wait-overlay { padding: 20px; }
+  .network-wait-card { padding: 27px 23px; }
+  .network-wait-title { font-size: 19px; }
+}
+
+/* Feedback remains visible without motion when the OS requests less movement. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-story::before,
+  .auth-illustration,
+  .page-enter,
+  .nav-item.active::before,
+  .loading-indicator,
+  .modal-backdrop,
+  .modal,
+  .sidebar.open,
+  .sidebar.closing,
+  .mobile-backdrop,
+  .mobile-backdrop.closing,
+  .network-wait-overlay.is-visible,
+  .network-spinner,
+  .network-skeleton > span,
+  .paper-fields [data-source-field].source-highlight,
+  .badge.PROCESSING > i {
+    animation: none !important;
+  }
+  .stat-card,
+  .legal-card,
+  .recent-panel,
+  .workspace-note,
+  .button,
+  .nav-item,
+  .paper-fields [data-source-field],
+  .upload-progress-track > i,
+  #toast {
+    transition: none !important;
+  }
+  .stat-card:hover,
+  .legal-card:hover,
+  .recent-panel:hover,
+  .workspace-note:hover { transform: none !important; }
+  .page-enter { opacity: 1; transform: none; }
+  .sidebar.closing { transform: translateX(-100%); }
+  .mobile-backdrop.closing { opacity: 0; }
+  .paper-fields [data-source-field] { scroll-behavior: auto; }
+}

@@ -44,6 +44,14 @@ Browser test dùng Playwright với Google Chrome đã cài trên máy (`channel
 
 GitHub Actions chạy kiểm tra source, unit/HTTP/API client, browser test, build và smoke-test container trên PR/push `main`. Có thể bật publish Docker Hub sau khi kiểm tra đạt; xem [hướng dẫn CI và Docker](docs/CI.md). Docker image phục vụ cả frontend đã build và proxy API, chạy non-root. Không cần Docker Hub secret để chạy job kiểm tra.
 
+Image publish được đặt cố định là `duongtruong0409/sea-codex-frontend`, với tag `latest`, `sha-<commit>` và release `v*`. Để publish, cấu hình `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` và bật variable `PUBLISH_DOCKERHUB=true` trên GitHub.
+
+## Hiệu ứng và phản hồi
+
+Trang đăng nhập/đăng ký có nền gradient và minh họa chuyển động chậm. Chuyển trang chạy trong 360ms; card nâng 2px khi hover; sidebar giữ highlight/vạch chỉ báo. Menu mobile trượt kèm backdrop mờ, giữ focus và đóng bằng Escape. Modal, toast, loading button và lỗi validation có phản hồi rõ ràng.
+
+API client theo dõi số request đang chạy. Màn chờ xuất hiện sau 150ms để tránh nhấp nháy với phản hồi nhanh, giữ đến khi request cuối hoàn tất, rồi đóng cả khi lỗi/timeout. Các bước đọc tệp và kiểm tra trùng trong demo có tiến trình từng tệp; không trình bày thành tiến trình gửi mạng/OCR. Bấm field trong màn review sẽ chọn trang nguồn, focus và tô sáng bằng chứng mà vẫn giữ PII đã che. Các chuyển động tôn trọng `prefers-reduced-motion`.
+
 ## Cấu trúc
 
 ```text

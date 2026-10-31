@@ -5,10 +5,12 @@ import { renderAuthPage } from './auth-view.js';
 const mode = new URLSearchParams(location.search).get('mode') === 'demo' ? 'demo' : 'api';
 if (mode === 'api') demo.logout();
 import { openCatalogEditor } from './catalog-editor.js';
-import { icon, escape as e, avatar, badge, empty, button, modal, closeModal, notify, trapModal, statusNames } from './ui.js';
+import { icon, escape as e, avatar, badge, empty, button, modal, closeModal, notify, trapModal, statusNames, requestCloseModal, bindFormValidation, setFieldError, bindRequestLoading } from './ui.js';
 
 const STATUS = ['PROCESSING','MISSING_DOCUMENT','INVALID_DOCUMENT','VALID_DOCUMENT','APPROVED_DOCUMENT','REJECTED'];
 const state = { page:'dashboard', id:null, tab:'overview', search:'', status:'', type:'', assignee:'', from:'', to:'', metric:'current', doc:null, mobile:false, catalog:'dossiers', catalogCode:null, auditAction:'', revealed:new Map(), original:new Set(), health:null, healthLoading:false, healthError:null };
+let renderedView = null;
+let mobileCloseTimer;
 const can = permission => Boolean(demo.session && demo.can(permission));
 const session = () => demo.session;
 const company = () => companies.find(c => c.id === session()?.companyId);
@@ -36,7 +38,10 @@ const optionList = (items, value, labelKey='name', valueKey='id') => items.map(i
 const nav = () => navItems.filter(([, , ,permission]) => can(permission)).map(([page,glyph,label]) => `<button class="nav-item ${state.page === page || state.page === 'detail' && page === 'dossiers' ? 'active':''}" data-page="${page}" aria-label="${label}" ${state.page===page?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span>${page==='review'&&count('VALID_DOCUMENT')?`<small>${count('VALID_DOCUMENT')}</small>`:''}</button>`).join('');
 
 function render() {
-  if (!session()) { document.querySelector('#app').innerHTML = authPage(); return; }
+  const viewKey=session()?`${state.page}:${state.id}:${state.tab}:${state.catalog}`:`auth:${state.page}`;
+  const entering=viewKey!==renderedView;renderedView=viewKey;
+  document.body.classList.toggle('menu-open',state.mobile);
+  if (!session()) { document.querySelector('#app').innerHTML = authPage();if(entering)document.querySelector('.auth-card')?.classList.add('page-enter');bindFormValidation(document.querySelector('.auth-form'));return; }
   const forbidden = navItems.find(([p]) => p === state.page)?.[3];
   let content;
   try {
@@ -45,15 +50,15 @@ function render() {
   document.title = `${titles[state.page] || 'DocSense AI'} · DocSense AI`;
   document.querySelector('#app').innerHTML = `<a class="skip-link" href="#main-content">Đến nội dung chính</a>
     ${state.mobile?'<button class="mobile-backdrop" data-action="mobile" aria-label="Đóng menu"></button>':''}
-    <aside class="sidebar ${state.mobile?'open':''}">
+    <aside id="workspace-menu" class="sidebar ${state.mobile?'open':''}" aria-label="Menu không gian làm việc" ${state.mobile?'role="dialog" aria-modal="true"':''}>
       <a class="brand" href="#/dashboard"><img src="/assets/logo.svg" alt="" width="31" height="31"/>DocSense <span>AI</span></a>
       <div class="nav-label">KHÔNG GIAN LÀM VIỆC</div>
       <div class="tenant-card"><span class="tenant-logo">${e(company()?.initials||'CT')}</span><span><strong>${e(company()?.name||'Doanh nghiệp')}</strong><small>Không gian doanh nghiệp</small></span>${icon('building')}</div>
       <div class="nav-label management-label">QUẢN LÝ</div><nav aria-label="Điều hướng chính">${nav()}</nav>
       <div class="sidebar-bottom"><div class="workspace-note"><span class="note-symbol">${icon('shield')}</span><strong>Rõ dữ liệu.<br/>Chắc quyết định.</strong><p>Một không gian cho mọi bước xử lý hồ sơ.</p><button class="text-link" data-action="guide">Khám phá quy trình ${icon('arrow')}</button></div><button class="nav-item ${state.page==='connection'?'active':''}" data-page="connection">${icon('link')}<span>Kết nối backend</span><span class="health-dot ${state.health?'connected':''}"></span></button><button class="user-button" data-action="account">${avatar(session().name,1)}<span><strong>${e(session().name)}</strong><small>${e(roles[session().role])}</small></span>${icon('down')}</button></div>
     </aside>
-    <div class="app-shell"><header class="topbar"><div class="breadcrumbs"><button class="mobile-toggle icon-button" data-action="mobile" aria-label="Mở menu">${icon('menu')}</button><span>${e(company()?.name)}</span><span class="crumb-slash">/</span><strong>${titles[state.page]}</strong></div><div class="top-actions"><span class="demo-pill"><i></i>Bản demo</span><button class="icon-button" data-action="notifications" aria-label="Thông báo">${icon('bell')}<i class="notification-dot"></i></button><span class="top-divider"></span><button class="avatar-button" data-action="account" aria-label="Tài khoản">${avatar(session().name,1)}</button></div></header>
-    <main id="main-content" class="main" tabindex="-1">${content}</main><footer class="page-footer"><span>DocSense AI workspace <b>·</b> Không gian xử lý hồ sơ</span><span>Dữ liệu và kết quả nghiệp vụ mô phỏng.</span></footer></div>`;
+    <div class="app-shell" ${state.mobile?'inert':''}><header class="topbar"><div class="breadcrumbs"><button class="mobile-toggle icon-button" data-action="mobile" aria-label="Mở menu" aria-controls="workspace-menu" aria-expanded="${state.mobile}">${icon('menu')}</button><span>${e(company()?.name)}</span><span class="crumb-slash">/</span><strong>${titles[state.page]}</strong></div><div class="top-actions"><span class="demo-pill"><i></i>Bản demo</span><button class="icon-button" data-action="notifications" aria-label="Thông báo">${icon('bell')}<i class="notification-dot"></i></button><span class="top-divider"></span><button class="avatar-button" data-action="account" aria-label="Tài khoản">${avatar(session().name,1)}</button></div></header>
+    <main id="main-content" class="main ${entering?'page-enter':''}" tabindex="-1">${content}</main><footer class="page-footer"><span>DocSense AI workspace <b>·</b> Không gian xử lý hồ sơ</span><span>Dữ liệu và kết quả nghiệp vụ mô phỏng.</span></footer></div>`;
 }
 
 function dashboard() {
@@ -101,11 +106,13 @@ function documentReview(d) {
   if(file)state.doc=file.id;
   const editing=can('dossier:correct')&&!isFinal(d)&&file?.status==='EXTRACTED';
   const original=file&&state.original.has(d.id+file.id);
+  const evidencePage=state.evidencePage||1;
+  const totalPages=Math.max(1,...(file?.sourcePages||[]),...(file?.fields||[]).map(f=>f.source?.page||1));
   return `<div class="review-layout"><aside class="panel document-list">${panelHeading('Tài liệu',`${d.files.length} tệp trong hồ sơ`)}${d.files.map(f=>`<button class="document-item ${f.id===file?.id?'selected':''}" data-doc="${f.id}">${icon('file')}<span><strong>${e(f.name)}</strong><small>Đợt ${f.batch} · ${e(f.typeName||'Chưa phân loại')}</small>${badge(f.status)}</span></button>`).join('')||empty('Chưa có tài liệu','Thêm ảnh hoặc PDF.')}</aside>
-    ${file?`<section class="document-preview"><div class="preview-toolbar"><span>${icon('file')} ${e(file.name)}</span><span>Trang 1 / 1</span></div><div class="preview-notice">Bản minh họa · Không phải tệp gốc hoặc kết quả OCR thực tế</div><div class="paper"><div class="paper-watermark">MẪU DEMO</div><div class="paper-emblem">✧</div><h4>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4><small>Độc lập – Tự do – Hạnh phúc</small><hr/><h3>${e(file.typeName||'TÀI LIỆU CHƯA PHÂN LOẠI')}</h3><div class="paper-fields">${(file.fields||[]).map(f=>`<p data-source-field="${e(f.key)}"><span>${e(f.label)}</span><strong>${e(state.revealed.get(d.id+file.id+f.key)??f.value)}</strong></p>`).join('')||'<p>Tài liệu đang chờ phân loại / xử lý.</p>'}</div><div class="paper-signature"><small>Chỉ dùng minh họa giao diện</small><br/><span>DocSense AI demo</span></div></div><div class="preview-source">${icon('link')} ${file.sourceFileId?'Tệp dẫn xuất · nguồn trang '+e(file.sourcePages?.join(', ')):'Tệp gốc · lưu liên kết nguồn'}${can('dossier:image_view')?`<button class="text-link" data-action="view-original">${original?'Đã ghi nhận lượt xem':'Xem bản gốc (demo)'}</button>`:''}</div></section>
+    ${file?`<section class="document-preview"><div class="preview-toolbar"><span>${icon('file')} ${e(file.name)}</span><span class="page-indicator" aria-live="polite">Trang ${evidencePage} / ${totalPages}</span></div><div class="preview-notice">Bản minh họa · Không phải tệp gốc hoặc kết quả OCR thực tế</div><div class="paper"><div class="paper-watermark">MẪU DEMO</div><div class="paper-emblem">✧</div><h4>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4><small>Độc lập – Tự do – Hạnh phúc</small><hr/><h3>${e(file.typeName||'TÀI LIỆU CHƯA PHÂN LOẠI')}</h3><div class="paper-fields">${(file.fields||[]).filter(f=>(f.source?.page||1)===evidencePage).map(f=>`<p tabindex="-1" class="evidence-target ${state.evidenceField===f.key?'source-highlight':''}" data-source-field="${e(f.key)}" aria-label="Bằng chứng ${e(f.label)} · Trang ${f.source?.page||1}"><span>${e(f.label)}</span><strong>${e(state.revealed.get(d.id+file.id+f.key)??f.value)}</strong></p>`).join('')||'<p>Tài liệu đang chờ phân loại / xử lý.</p>'}</div><div class="paper-signature"><small>Chỉ dùng minh họa giao diện</small><br/><span>DocSense AI demo</span></div></div><div class="preview-source">${icon('link')} ${file.sourceFileId?'Tệp dẫn xuất · nguồn trang '+e(file.sourcePages?.join(', ')):'Tệp gốc · lưu liên kết nguồn'}${can('dossier:image_view')?`<button class="text-link" data-action="view-original">${original?'Đã ghi nhận lượt xem':'Xem bản gốc (demo)'}</button>`:''}</div></section>
     <section class="panel extraction">${panelHeading('Dữ liệu trích xuất','Giá trị mẫu theo schema của doanh nghiệp')}<div class="form-body"><div class="extraction-meta"><span>${badge(file.status)}</span><small>Schema v${d.configVersion} · Model demo</small></div>${file.status==='FAILED'?`<div class="notice error">${icon('warning')} ${e(file.error||'Không đọc được tài liệu.')}</div>${can('dossier:upload')&&!isFinal(d)?button('Thử xử lý lại','retry','refresh','primary full'):''}`:''}
     ${!isFinal(d)&&can('dossier:classify')?`<label>Phân loại giấy tờ<select id="classify-select"><option value="">Chọn loại giấy tờ</option>${optionList(d.checklist.map(c=>({code:c.code,name:c.name})),file.typeCode,'name','code')}</select></label>${button('Xác nhận phân loại','classify','','full')}`:''}
-    ${(file.fields||[]).map(f=>`<div class="field-row ${f.confidence<.8?'low-confidence':''}"><div class="field-label"><button class="text-link" data-source="${e(f.key)}">${e(f.label)} ${f.pii?'<span class="pii-tag">PII</span>':''}</button><span class="confidence ${f.confidence<.8?'low':''}">${Math.round((f.confidence||0)*100)}%</span></div><div class="field-value"><span>${e(state.revealed.get(d.id+file.id+f.key)??f.value)}</span>${f.pii&&can('pii:view')?`<button class="icon-button" data-reveal="${e(f.key)}" aria-label="Hiện ${e(f.label)}">${icon('eye')}</button>`:''}${editing?`<button class="text-link" data-correct="${e(f.key)}">Sửa</button>`:''}</div><small>Trang ${f.source?.page||1} · ${e(f.source?.excerpt||'Nguồn mô phỏng')}</small></div>`).join('')}
+    ${(file.fields||[]).map(f=>`<div class="field-row ${f.confidence<.8?'low-confidence':''} ${state.evidenceField===f.key?'is-focused':''}" data-evidence-field="${e(f.key)}"><div class="field-label"><button class="text-link" data-source="${e(f.key)}">${e(f.label)} ${f.pii?'<span class="pii-tag">PII</span>':''}</button><span class="confidence ${f.confidence<.8?'low':''}">${Math.round((f.confidence||0)*100)}%</span></div><div class="field-value"><span>${e(state.revealed.get(d.id+file.id+f.key)??f.value)}</span>${f.pii&&can('pii:view')?`<button class="icon-button" data-reveal="${e(f.key)}" aria-label="Hiện ${e(f.label)}">${icon('eye')}</button>`:''}${editing?`<button class="text-link" data-correct="${e(f.key)}">Sửa</button>`:''}</div><small>Trang ${f.source?.page||1} · ${e(f.source?.excerpt||'Nguồn mô phỏng')}</small></div>`).join('')}
     <div class="notice">${icon('shield')} Giá trị nhạy cảm được che mặc định. Thao tác hiện dữ liệu và xem bản gốc được ghi nhật ký.</div></div></section>`:empty('Chưa có tài liệu','Tải lên ảnh hoặc PDF để bắt đầu.','upload')}</div>`;
 }
 function issuePanel(d) {
@@ -142,7 +149,7 @@ function auditPage() {
 }
 function auditRows(rows) { return rows.map(row=>`<div class="audit-row"><span class="audit-icon">${icon(row.action.includes('PII')?'eye':row.action.includes('REVIEW')?'shield':'history')}</span><div class="audit-description"><span class="audit-action">${e(row.action)}</span><strong>${e(row.description)}</strong><small>${e(row.actor)} ${row.reference?' · '+e(row.reference):''}</small></div><time>${dateTime(row.at)}</time>${row.dossierId?`<button class="icon-button" data-open="${row.dossierId}" aria-label="Mở hồ sơ">${icon('arrow')}</button>`:''}</div>`).join('')||empty('Chưa có hoạt động phù hợp','Các thao tác trong công ty sẽ được ghi nhận tại đây.','history'); }
 function connectionPage() {
-  return `${heading('TÍCH HỢP BACKEND','Kết nối rõ ràng, đúng hiện trạng.','Đối chiếu source Go và OpenAPI trước khi kết nối tính năng.',`<button class="button primary" data-action="health" ${state.healthLoading?'disabled':''}>${icon('refresh')}${state.healthLoading?'Đang kiểm tra…':'Kiểm tra kết nối'}</button>`)}<div class="connection-grid"><section class="panel">${panelHeading('Dịch vụ Go backend','Kiểm tra liveness của tiến trình HTTP')}<div class="health-state ${state.health?'success':state.healthError?'error':''}"><span class="large-icon">${icon(state.health?'check':state.healthError?'warning':'link')}</span><h2>${state.health?'Backend đang hoạt động':state.healthError?'Chưa kết nối được':'Chưa kiểm tra kết nối'}</h2><p>${state.health?'GET /health trả dữ liệu đúng OpenAPI.':state.healthError?e(state.healthError):'Bấm kiểm tra để gọi endpoint thật qua proxy cùng origin.'}</p>${state.health?`<code>${e(JSON.stringify({code:state.health.code,message:state.health.message,data:state.health.data}))}</code><small>Request ID: ${e(state.health.requestId||'Không có')}<br/>${dateTime(state.health.checkedAt)}</small>`:''}</div><div class="panel-bottom">Liveness không xác nhận PostgreSQL hay OCR đã sẵn sàng.</div></section><section class="panel">${panelHeading('Phạm vi API đã kiểm chứng','Theo docs/api/api_spec.json của backend')}<div class="endpoint-row"><span class="method">GET</span><code>/health</code><span class="badge EXTRACTED"><i></i>Đã triển khai</span></div>${[['Auth & thành viên','Đăng ký, đăng nhập, tài khoản'],['Hồ sơ & tài liệu','Catalog, upload, phân loại, OCR'],['Kiểm duyệt & audit','Đối soát, PII, quyết định, nhật ký'],['Dashboard','Thống kê trạng thái theo thời gian']].map(([title,sub])=>`<div class="capability-row"><div><strong>${title}</strong><small>${sub}</small></div><span class="pending-label">Chưa có API</span></div>`).join('')}<div class="panel-bottom">Frontend dùng dữ liệu demo cho nghiệp vụ. Không gọi API chưa triển khai.</div></section></div>`;
+  return `${heading('TÍCH HỢP BACKEND','Kết nối rõ ràng, đúng hiện trạng.','Đối chiếu source Go và OpenAPI trước khi kết nối tính năng.',`<button class="button primary ${state.healthLoading?'is-loading':''}" data-action="health" aria-busy="${state.healthLoading}" ${state.healthLoading?'disabled':''}>${state.healthLoading?'<span class="loading-indicator" aria-hidden="true"></span>':icon('refresh')}${state.healthLoading?'Đang kiểm tra…':'Kiểm tra kết nối'}</button>`)}<div class="connection-grid"><section class="panel">${panelHeading('Dịch vụ Go backend','Kiểm tra liveness của tiến trình HTTP')}<div class="health-state ${state.health?'success':state.healthError?'error':''}"><span class="large-icon">${icon(state.health?'check':state.healthError?'warning':'link')}</span><h2>${state.health?'Backend đang hoạt động':state.healthError?'Chưa kết nối được':'Chưa kiểm tra kết nối'}</h2><p>${state.health?'GET /health trả dữ liệu đúng OpenAPI.':state.healthError?e(state.healthError):'Bấm kiểm tra để gọi endpoint thật qua proxy cùng origin.'}</p>${state.health?`<code>${e(JSON.stringify({code:state.health.code,message:state.health.message,data:state.health.data}))}</code><small>Request ID: ${e(state.health.requestId||'Không có')}<br/>${dateTime(state.health.checkedAt)}</small>`:''}</div><div class="panel-bottom">Liveness không xác nhận PostgreSQL hay OCR đã sẵn sàng.</div></section><section class="panel">${panelHeading('Phạm vi API đã kiểm chứng','Theo docs/api/api_spec.json của backend')}<div class="endpoint-row"><span class="method">GET</span><code>/health</code><span class="badge EXTRACTED"><i></i>Đã triển khai</span></div>${[['Auth & thành viên','Đăng ký, đăng nhập, tài khoản'],['Hồ sơ & tài liệu','Catalog, upload, phân loại, OCR'],['Kiểm duyệt & audit','Đối soát, PII, quyết định, nhật ký'],['Dashboard','Thống kê trạng thái theo thời gian']].map(([title,sub])=>`<div class="capability-row"><div><strong>${title}</strong><small>${sub}</small></div><span class="pending-label">Chưa có API</span></div>`).join('')}<div class="panel-bottom">Frontend dùng dữ liệu demo cho nghiệp vụ. Không gọi API chưa triển khai.</div></section></div>`;
 }
 
 function authPage() {
@@ -150,9 +157,26 @@ function authPage() {
   return renderAuthPage({page:state.page,mode,companies,roles});
 }
 
+function closeMobileMenu() {
+  if(!state.mobile)return;
+  clearTimeout(mobileCloseTimer);
+  const drawer=document.querySelector('.sidebar');drawer?.classList.add('closing');drawer?.classList.remove('open');
+  document.querySelector('.mobile-backdrop')?.classList.add('closing');
+  const delay=matchMedia('(prefers-reduced-motion: reduce)').matches?0:220;
+  mobileCloseTimer=setTimeout(()=>{state.mobile=false;render();document.querySelector('.mobile-toggle')?.focus({preventScroll:true});},delay);
+}
+function focusEvidence(key) {
+  const file=getDossier()?.files.find(item=>item.id===state.doc);const field=file?.fields.find(item=>item.key===key);if(!field)return;
+  const page=field.source?.page||1;state.evidenceField=key;
+  if(state.evidencePage!==page){state.evidencePage=page;render();}
+  document.querySelectorAll('[data-source-field]').forEach(el=>el.classList.toggle('source-highlight',el.dataset.sourceField===key));
+  document.querySelectorAll('[data-evidence-field]').forEach(el=>el.classList.toggle('is-focused',el.dataset.evidenceField===key));
+  const target=[...document.querySelectorAll('.paper [data-source-field]')].find(el=>el.dataset.sourceField===key);
+  target?.focus({preventScroll:true});target?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+}
 function route() {
   const [path,query='']=location.hash.replace(/^#\/?/,'').split('?');const [page,id]=path.split('/');
-  state.page=page||'dashboard';state.id=id||null;state.tab=new URLSearchParams(query).get('tab')||'overview';state.doc=null;state.mobile=false;state.revealed.clear();state.original.clear();
+  state.page=page||'dashboard';state.id=id||null;state.tab=new URLSearchParams(query).get('tab')||'overview';state.doc=null;state.evidencePage=1;state.evidenceField=null;state.mobile=false;clearTimeout(mobileCloseTimer);state.revealed.clear();state.original.clear();
   if(!session()&&!['login','signup'].includes(state.page))state.page='login';
   if(session()&&['login','signup'].includes(state.page))state.page=can('dashboard:read')?'dashboard':'dossiers';
   render();window.scrollTo(0,0);
@@ -171,22 +195,47 @@ function editCatalog(create=false) {
 }
 function uploadDialog() {
   const d=getDossier();if(!d||isFinal(d))return;
-  modal('Tiếp nhận tài liệu',`${d.reference} · Thêm đợt tiếp nhận vào cùng hồ sơ`,`<label class="dropzone" id="dropzone">${icon('upload')}<strong>Kéo thả hoặc chọn tệp</strong><span>PDF, JPG, PNG · tối đa 20 MiB/tệp · 10 tệp/đợt</span><input type="file" name="files" id="upload-files" accept="application/pdf,image/jpeg,image/png" multiple required/></label><div id="upload-file-list" class="file-upload-list" aria-live="polite"></div><label>Loại giấy tờ<select name="documentTypeCode"><option value="">Chờ chuyên viên phân loại</option>${optionList(d.checklist.map(c=>({code:c.code,name:c.name})),'','name','code')}</select></label><div class="notice">${icon('help')} Tệp được băm để phát hiện trùng trong bản demo. Nội dung không được gửi đi; không thực hiện OCR hoặc tách PDF.</div>`,'Tiếp nhận mô phỏng',async data=>{
-    const result=await demo.upload(d.id,data.getAll('files').filter(f=>f.size),data.get('documentTypeCode'));
-    const errors=(result||[]).filter(r=>r.error);closeModal();state.tab='documents';state.doc=null;refresh(errors.length?errors.map(r=>r.name+': '+r.error).join(' · '):'Đã tiếp nhận đợt tài liệu mô phỏng.');
+  let completed=false;
+  const progressRow=(file,index)=>`<div class="upload-progress-item" data-upload-index="${index}"><div class="upload-progress-header">${icon('file')}<strong>${e(file.name)}</strong><span class="upload-progress-count">0%</span></div><div class="upload-progress-track" role="progressbar" aria-label="Tiến trình cục bộ ${e(file.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i style="width:0%"></i></div><small class="upload-stage">Chờ tiếp nhận · ${(file.size/1024/1024).toFixed(2)} MiB</small></div>`;
+  const form=modal('Tiếp nhận tài liệu',`${d.reference} · Thêm đợt tiếp nhận vào cùng hồ sơ`,`<label class="dropzone" id="dropzone">${icon('upload')}<strong>Kéo thả hoặc chọn tệp</strong><span>PDF, JPG, PNG · tối đa 20 MiB/tệp · 10 tệp/đợt</span><input type="file" name="files" id="upload-files" accept="application/pdf,image/jpeg,image/png" multiple required/></label><div id="upload-file-list" class="upload-progress-list" aria-live="polite"></div><label id="upload-type-label">Loại giấy tờ<select name="documentTypeCode"><option value="">Chờ chuyên viên phân loại</option>${optionList(d.checklist.map(c=>({code:c.code,name:c.name})),'','name','code')}</select></label><div class="notice">${icon('help')} Tiến trình xử lý cục bộ: đọc tệp, kiểm tra định dạng và nội dung trùng. Đây là bản mô phỏng, không gửi tệp lên server hoặc thực hiện OCR.</div>`,'Tiếp nhận mô phỏng',async data=>{
+    if(completed)return;
+    const files=data.getAll('files').filter(file=>file.size);
+    if(!files.length)throw new Error('Chọn ít nhất một tệp không rỗng.');
+    if(files.length>10)throw new Error('Tối đa 10 tệp trong một đợt tiếp nhận.');
+    form.querySelector('#upload-file-list').innerHTML=files.map(progressRow).join('');
+    const result=await demo.upload(d.id,files,data.get('documentTypeCode'),{onProgress:async progress=>{
+      if(!form.isConnected)return;
+      const row=form.querySelector(`[data-upload-index="${progress.index}"]`);if(!row)return;
+      row.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',String(progress.percent));
+      row.querySelector('.upload-progress-track > i').style.width=progress.percent+'%';
+      row.querySelector('.upload-progress-count').textContent=progress.percent+'%';
+      row.querySelector('.upload-stage').textContent=progress.error||progress.stage;
+      row.classList.toggle('progress-error',Boolean(progress.error));row.classList.toggle('progress-complete',progress.percent===100&&!progress.error);
+      // Let the browser paint completed work; percentages are local milestones,
+      // never network transfer or OCR progress.
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+    }});
+    completed=true;const errors=result.filter(item=>item.error);
+    state.tab='documents';state.doc=result.find(item=>item.success)?.id||null;render();
+    form.querySelector('#dropzone').hidden=true;form.querySelector('#upload-type-label').hidden=true;
+    form.querySelector('.modal-footer').innerHTML='<button class="button primary" type="button" data-action="close-modal">Hoàn tất</button>';
+    const summary=document.createElement('p');summary.className='upload-result-summary';summary.setAttribute('role','status');summary.textContent=`Đã hoàn tất mô phỏng: ${result.length-errors.length}/${result.length} tệp được tiếp nhận${errors.length?', '+errors.length+' tệp cần kiểm tra lại':''}.`;
+    form.querySelector('#upload-file-list').append(summary);
+    form.querySelector('[data-action="close-modal"]').focus();
+    notify(errors.length?'Một số tệp chưa được tiếp nhận. Xem chi tiết trong tiến trình.':'Đã tiếp nhận đợt tài liệu mô phỏng.');
   });
-  const input=document.querySelector('#upload-files');const zone=document.querySelector('#dropzone');
-  const preview=()=>{document.querySelector('#upload-file-list').innerHTML=[...input.files].map(file=>`<div class="upload-row">${icon('file')}<strong>${e(file.name)}</strong><small>${(file.size/1024/1024).toFixed(2)} MiB</small></div>`).join('');};
-  input.onchange=preview;zone.ondragover=event=>{event.preventDefault();zone.classList.add('dragging');};zone.ondragleave=()=>zone.classList.remove('dragging');zone.ondrop=event=>{event.preventDefault();zone.classList.remove('dragging');input.files=event.dataTransfer.files;preview();};
+  const input=form.querySelector('#upload-files');const zone=form.querySelector('#dropzone');
+  const preview=()=>{form.querySelector('#upload-file-list').innerHTML=[...input.files].map(progressRow).join('');};
+  input.onchange=preview;zone.ondragover=event=>{if(input.disabled)return;event.preventDefault();zone.classList.add('dragging');};zone.ondragleave=()=>zone.classList.remove('dragging');zone.ondrop=event=>{event.preventDefault();zone.classList.remove('dragging');if(input.disabled)return;input.files=event.dataTransfer.files;preview();};
 }
 function decisionDialog(decision) {
   const d=getDossier();const labels={APPROVE:'Phê duyệt hồ sơ',REJECT:'Từ chối hồ sơ',SUPPLEMENT:'Yêu cầu bổ sung'};
   modal(labels[decision],`${d.reference} · ${d.name}`,`<p>Ghi nhận người thực hiện, thời gian, quyết định và lý do trong lượt xử lý ${d.version}.</p><label>${decision==='APPROVE'?'Kết luận kiểm duyệt':'Lý do / nội dung cần bổ sung'}<textarea name="reason" required maxlength="1000" placeholder="Nhập nội dung rõ ràng để đội ngũ theo dõi…"></textarea></label><div class="notice">${icon('help')} Quyết định trong bản demo không có giá trị xác thực pháp lý.</div>`,'Xác nhận quyết định',data=>{demo.review(d.id,decision,data.get('reason').trim());closeModal();refresh('Đã lưu quyết định kiểm duyệt mô phỏng.');});
 }
 const actions={
-  'close-modal':closeModal,
+  'close-modal':requestCloseModal,
   'enter-demo':()=>{const url=new URL(location.href);url.searchParams.set('mode','demo');url.hash='/dashboard';location.assign(url);},
-  mobile:()=>{state.mobile=!state.mobile;render();},
+  mobile:()=>{if(state.mobile){closeMobileMenu();return;}state.mobile=true;render();requestAnimationFrame(()=>document.querySelector('.sidebar nav button')?.focus());},
   account:()=>modal('Tài khoản hiện tại',`${session().name} · ${company()?.name}`,`<div class="account-role">${avatar(session().name,1)}<div><strong>${e(roles[session().role])}</strong><p>Tài khoản thuộc duy nhất công ty hiện tại.</p></div></div><div class="notice">Để trải nghiệm công ty hoặc vai trò khác, đăng xuất và chọn tài khoản demo khác.</div>`,'Đăng xuất',()=>{apiClient.clearSession();demo.logout();closeModal();state.revealed.clear();state.original.clear();resetFilters();navigate('login');}),
   guide:()=>modal('Một quy trình, rõ từng bước','Từ tài liệu đầu tiên đến quyết định cuối cùng.','<ol class="help-list"><li>Tạo hồ sơ từ loại bộ hồ sơ của công ty.</li><li>Tiếp nhận tài liệu theo nhiều đợt; xem trạng thái riêng từng tệp.</li><li>Chuyên viên phân loại, kiểm tra trích xuất và sửa có lý do.</li><li>Xử lý sai lệch và xác nhận cảnh báo.</li><li>Ghi quyết định duyệt, từ chối hoặc yêu cầu bổ sung.</li><li>Theo dõi nhật ký, lịch sử trạng thái và lượt xem PII.</li></ol><div class="notice">Toàn bộ nghiệp vụ hiện là mô phỏng. Backend mới triển khai health. Tải lại trang đặt lại dữ liệu mẫu.</div>','Đã hiểu',closeModal),
   notifications:()=>modal('Công việc trong không gian',company()?.name,`<p>${count('VALID_DOCUMENT')} hồ sơ chờ kiểm duyệt.</p><p>${count('MISSING_DOCUMENT')} hồ sơ thiếu giấy tờ.</p><p>${count('INVALID_DOCUMENT')} hồ sơ có sai lệch.</p>`,'Xem hồ sơ',()=>{closeModal();resetFilters();navigate('dossiers');}),
@@ -223,7 +272,7 @@ document.addEventListener('click',async event=>{
     if(el.dataset.open){navigate('detail',el.dataset.open);return;}
     if(el.dataset.review){navigate('detail',el.dataset.review,'issues');return;}
     if(el.dataset.tab){state.tab=el.dataset.tab;history.replaceState(null,'',`#/detail/${state.id}?tab=${state.tab}`);state.revealed.clear();render();return;}
-    if(el.dataset.doc){state.doc=el.dataset.doc;state.revealed.clear();render();return;}
+    if(el.dataset.doc){state.doc=el.dataset.doc;state.evidencePage=1;state.evidenceField=null;state.revealed.clear();render();return;}
     if(el.hasAttribute('data-status')){state.status=el.dataset.status;render();return;}
     if(el.hasAttribute('data-stat')){state.status=el.dataset.stat;state.search='';navigate('dossiers');return;}
     if(el.dataset.chartStatus){state.status=el.dataset.chartStatus;state.from=el.dataset.chartDate;state.to=el.dataset.chartDate;state.metric='transitions';navigate('dossiers');return;}
@@ -231,7 +280,7 @@ document.addEventListener('click',async event=>{
     if(el.dataset.catalogCode){state.catalogCode=el.dataset.catalogCode;render();return;}
     if(el.dataset.member){memberDialog(el.dataset.member);return;}
     if(el.dataset.reveal){const value=demo.reveal(state.id,state.doc,el.dataset.reveal);state.revealed.set(state.id+state.doc+el.dataset.reveal,value);render();notify('Đã ghi nhật ký xem dữ liệu nhạy cảm.');return;}
-    if(el.dataset.source){document.querySelectorAll('[data-source-field]').forEach(x=>x.classList.toggle('source-highlight',x.dataset.sourceField===el.dataset.source));return;}
+    if(el.dataset.source){focusEvidence(el.dataset.source);return;}
     if(el.dataset.correct){const d=getDossier(),file=d.files.find(f=>f.id===state.doc),field=file.fields.find(f=>f.key===el.dataset.correct);modal('Điều chỉnh dữ liệu',`${file.name} · ${field.label}`,`${formLabel('Giá trị mới','value',field.pii?'':field.value,'required')}<label>Mã lý do<select name="reasonCode"><option value="OCR_ERROR">Lỗi OCR</option><option value="SOURCE_ERROR">Lỗi dữ liệu nguồn</option><option value="ADMIN_UNIT_CHANGE">Thay đổi đơn vị hành chính</option><option value="OTHER">Lý do khác</option></select></label><label>Ghi chú<textarea name="note" required></textarea></label>`,'Lưu và đối soát lại',data=>{demo.correctField(d.id,file.id,field.key,data.get('value').trim(),data.get('reasonCode'),data.get('note').trim());closeModal();refresh('Đã lưu điều chỉnh và đối soát lại.');});return;}
     if(el.dataset.ack){modal('Xác nhận cảnh báo','Chỉ cảnh báo WARNING mới có thể xác nhận.','<label>Căn cứ / lý do chấp nhận<textarea name="reason" required></textarea></label>','Xác nhận',data=>{demo.acknowledgeIssue(state.id,el.dataset.ack,data.get('reason').trim());closeModal();refresh('Đã xác nhận cảnh báo.');});return;}
     if(el.dataset.requirement){modal('Đánh dấu giấy tờ không áp dụng',getDossier().reference,'<label>Lý do không áp dụng<textarea name="reason" required></textarea></label>','Xác nhận',data=>{demo.removeRequirement(state.id,el.dataset.requirement,data.get('reason').trim());closeModal();refresh('Đã cập nhật yêu cầu điều kiện.');});}
@@ -249,10 +298,16 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('submit',event=>{
   if(event.target.id==='live-auth-form'){event.preventDefault();notify('Backend chưa triển khai API xác thực.');return;}
-  if(event.target.id!=='auth-form')return;event.preventDefault();const data=new FormData(event.target);
-  try {if(state.page==='signup'){if(data.get('password')!==data.get('confirmPassword'))throw new Error('Mật khẩu xác nhận không khớp.');demo.registerCompany(Object.fromEntries(data));}else demo.login(data.get('companyId'),data.get('role'));resetFilters();navigate(can('dashboard:read')?'dashboard':'dossiers');notify('Đã vào không gian demo.');}catch(error){document.querySelector('#auth-error').textContent=error.message;}
+  if(event.target.id!=='auth-form')return;event.preventDefault();if(!event.target.checkValidity()){event.target.querySelector(':invalid')?.focus();return;}const data=new FormData(event.target);
+  try {if(state.page==='signup'){if(data.get('password')!==data.get('confirmPassword')){setFieldError(event.target.elements.confirmPassword,'Mật khẩu xác nhận không khớp.');event.target.elements.confirmPassword.focus();throw new Error('Mật khẩu xác nhận không khớp.');}demo.registerCompany(Object.fromEntries(data));}else demo.login(data.get('companyId'),data.get('role'));resetFilters();navigate(can('dashboard:read')?'dashboard':'dossiers');notify('Đã vào không gian demo.');}catch(error){document.querySelector('#auth-error').textContent=error.message;}
 });
-document.addEventListener('keydown',trapModal);
+document.addEventListener('keydown',event=>{
+  if(trapModal(event))return;
+  if(!state.mobile)return;
+  if(event.key==='Escape'){event.preventDefault();closeMobileMenu();return;}
+  if(event.key==='Tab'){const items=[...document.querySelectorAll('.sidebar a[href],.sidebar button:not(:disabled)')].filter(el=>el.getClientRects().length);if(event.shiftKey&&document.activeElement===items[0]){event.preventDefault();items.at(-1)?.focus();}else if(!event.shiftKey&&document.activeElement===items.at(-1)){event.preventDefault();items[0]?.focus();}}
+});
+bindRequestLoading();
 window.addEventListener('hashchange',()=>{if(!location.hash||location.hash.startsWith('#/'))route();});
 window.addEventListener('folio:unauthenticated',()=>{demo.logout();state.revealed.clear();state.original.clear();closeModal();navigate('login');notify('Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.');});
 route();
