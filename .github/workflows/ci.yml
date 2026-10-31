@@ -92,13 +92,13 @@ jobs:
           platforms: linux/amd64
           load: true
           push: false
-          tags: sea-codex-frontend:ci
+          tags: duongtruong0409/sea-codex-frontend:ci
           cache-from: type=gha,scope=sea-codex-frontend
           cache-to: type=gha,mode=max,scope=sea-codex-frontend
 
       - name: Check non-root runtime and static files
         run: |
-          docker run --rm --entrypoint /bin/sh sea-codex-frontend:ci -c \
+          docker run --rm --entrypoint /bin/sh duongtruong0409/sea-codex-frontend:ci -c \
             'test "$(id -u)" = "10001" && test -r /app/public/index.html && test -r /app/scripts/server.mjs'
 
       - name: Smoke-test static frontend and health proxy
@@ -112,10 +112,10 @@ jobs:
           trap cleanup EXIT
           docker network create folio-ci
           docker run --detach --name folio-backend-ci --network folio-ci \
-            --network-alias backend --entrypoint node sea-codex-frontend:ci \
+            --network-alias backend --entrypoint node duongtruong0409/sea-codex-frontend:ci \
             -e 'require("node:http").createServer((req,res)=>{res.writeHead(200,{"Content-Type":"application/json","X-Request-ID":"b09fefb1-75d9-4b4f-9041-a202e93c5fc3"});res.end(JSON.stringify({code:200,message:"Service is running",data:{status:"ok"}}));}).listen(8080,"0.0.0.0")'
           docker run --detach --name folio-frontend-ci --network folio-ci \
-            --publish 127.0.0.1:41874:8080 sea-codex-frontend:ci
+            --publish 127.0.0.1:41874:8080 duongtruong0409/sea-codex-frontend:ci
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:41874/ >/dev/null; then break; fi
             sleep 1
@@ -169,7 +169,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_REPOSITORY || 'sea-codex-frontend' }}
+          images: duongtruong0409/sea-codex-frontend
           flavor: latest=false
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}

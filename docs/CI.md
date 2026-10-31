@@ -14,12 +14,20 @@ Pull request không đăng nhập hoặc publish image. Các job kiểm tra khô
 
 ## Chạy image
 
+Image dùng đúng repository **`duongtruong0409/sea-codex-frontend`**. Sau khi publish thành công, chạy bản mới nhất:
+
 ```bash
-docker build -t sea-codex-frontend:local .
+docker pull duongtruong0409/sea-codex-frontend:latest
 docker run --rm --name folio-frontend \
   --publish 127.0.0.1:4173:8080 \
   --env BACKEND_ORIGIN=http://host.docker.internal:8080 \
-  sea-codex-frontend:local
+  duongtruong0409/sea-codex-frontend:latest
+```
+
+Để build riêng từ source local:
+
+```bash
+docker build -t duongtruong0409/sea-codex-frontend:local .
 ```
 
 Mở `http://127.0.0.1:4173`. `host.docker.internal` dùng cho Docker Desktop; trên Linux có thể thêm `--add-host=host.docker.internal:host-gateway`, hoặc dùng tên service backend trong mạng Docker chung. Mặc định image gọi `http://backend:8080`.
@@ -34,15 +42,14 @@ CI vẫn chạy đầy đủ khi chưa cấu hình Docker Hub. Để bật publi
 
 | Loại | Tên | Giá trị |
 | --- | --- | --- |
-| Repository secret | `DOCKERHUB_USERNAME` | Username/namespace Docker Hub |
-| Repository secret | `DOCKERHUB_TOKEN` | Access token có quyền push |
+| Repository secret | `DOCKERHUB_USERNAME` | Tài khoản có quyền ghi vào namespace `duongtruong0409` |
+| Repository secret | `DOCKERHUB_TOKEN` | Access token có quyền push `duongtruong0409/sea-codex-frontend` |
 | Repository variable | `PUBLISH_DOCKERHUB` | `true` để bật publish |
-| Repository variable | `DOCKERHUB_REPOSITORY` | Tùy chọn, mặc định `sea-codex-frontend` |
 
 Đặt các mục trên tại GitHub **Settings → Secrets and variables → Actions**. Khi đã bật publish nhưng thiếu secret, job báo lỗi rõ ràng. Không cần secret database, PASETO hoặc OCR để build image frontend.
 
-- Push `main` hoặc chạy thủ công trên `main`: tag `latest` và `sha-<full-commit-sha>`.
-- Push tag `v1.0.0`: tag `v1.0.0` và `sha-<full-commit-sha>`, không cập nhật `latest`.
+- Push `main` hoặc chạy thủ công trên `main`: `duongtruong0409/sea-codex-frontend:latest` và `duongtruong0409/sea-codex-frontend:sha-<full-commit-sha>`.
+- Push tag `v1.0.0`: `duongtruong0409/sea-codex-frontend:v1.0.0` và tag SHA, không cập nhật `latest`.
 - Pull request và chạy thủ công trên nhánh khác: chỉ kiểm tra, không publish.
 
 Workflow publish image, chưa tự deploy lên VM/Kubernetes. Chưa thay đổi repository secrets hoặc kích hoạt workflow từ máy local.
