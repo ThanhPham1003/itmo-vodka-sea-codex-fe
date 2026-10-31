@@ -104,13 +104,31 @@ test('catalog edits preserve repeated roles, pinned schemas, typed conditions an
   const definition={name:'Sale',description:'Before',documents:[
     {key:'seller',document_type:'identity',role:'seller',schema_version:2,min_count:2,required:true},
     {key:'buyer',document_type:'identity',role:'buyer',schema_version:2,min_count:1,required:false,conditional:true,trigger_reason:'When married',condition:{document_type:'identity',role:'seller',field_key:'married',operator:'equals',value:'true'}}
-  ],rules:[{code:'names',name:'Name',left:{document_type:'identity',field_key:'name',role:'seller',subject_field:'id'},right:{document_type:'identity',field_key:'name',role:'buyer',subject_field:'id'},operator:'TEXT_EQUALS',severity:'WARNING'}]};
+  ],rules:[{code:'names',name:'Name',left:{document_type:'identity',field_key:'name',role:'seller',subject_field:'id'},right:{document_type:'identity',field_key:'name',role:'buyer',subject_field:'id'},operator:'TEXT_EQUALS',severity:'WARNING',message:'Names do not match',remediation:'Check the original documents'}]};
   const {service,calls}=setup((_path,init)=>response({code:'sale',current_version:6,definition:JSON.parse(init.body)}),{documents:[{code:'identity',current_version:3,definition:{name:'Identity',fields:[]}}],dossiers:[{code:'sale',current_version:5,definition}]});
   await service.login('admin','long-password');await service.load({page:'catalog'});
   const selected=service.listDossierTypes()[0];await service.saveDossierType({...selected,description:'After'});
   const body=JSON.parse(calls.at(-1).init.body);assert.equal(body.expected_version,5);assert.equal(body.description,'After');
   assert.deepEqual(body.documents.map(doc=>[doc.key,doc.role,doc.schema_version,doc.min_count]),[['seller','seller',2,2],['buyer','buyer',2,1]]);
   assert.deepEqual(body.documents[1].condition,definition.documents[1].condition);assert.deepEqual(body.rules[0].left,definition.rules[0].left);
+  assert.deepEqual(body.rules,definition.rules,'UI aliases must not leak into strict backend rule DTOs');
+});
+test('new comparison rules serialize only API fields and retain edited references and subject joins',async()=>{
+  const {service,calls}=setup((_path,init)=>response({code:'new-sale',current_version:1,definition:JSON.parse(init.body)}));
+  const rule={code:'',id:'editor-id',name:'Compare document numbers',leftType:'contract',leftField:'seller-number',rightType:'identity',rightField:'id-number',
+    left:{document_type:'old-type',field_key:'old-field',role:'seller',subject_field:'seller-name',editorOnly:true},
+    right:{document_type:'old-type',field_key:'old-field',role:'owner',subject_field:'full-name',editorOnly:true},
+    operator:'DIGITS_EQUAL',severity:'WARNING',message:'Numbers do not match',remediation:'Check the original documents',editorOnly:true};
+  await service.saveDossierType({name:'Sale',description:'Draft',documents:[],rules:[rule]});
+  assert.equal(calls.at(-1).init.method,'POST');
+  const body=JSON.parse(calls.at(-1).init.body);
+  assert.equal(body.expected_version,0);
+  assert.deepEqual(body.rules,[{code:'',name:'Compare document numbers',
+    left:{document_type:'contract',field_key:'seller-number',role:'seller',subject_field:'seller-name'},
+    right:{document_type:'identity',field_key:'id-number',role:'owner',subject_field:'full-name'},
+    operator:'DIGITS_EQUAL',severity:'WARNING',message:'Numbers do not match',remediation:'Check the original documents'}]);
+  assert.equal(rule.left.document_type,'old-type','serializing must not mutate the editor draft');
+  assert.equal(rule.id,'editor-id');
 });
 test('background completion rejected while an editor is open does not change the revision',async()=>{
   let version=7;
