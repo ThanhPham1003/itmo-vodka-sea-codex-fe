@@ -64,3 +64,10 @@ Node proxy `/backend/health` → `/health`, `/api/v1/*` giữ method/query/body/
 Test đơn vị/HTTP và Playwright dùng response fixtures bám DTO/routes của commit 1a3ee15: auth, quyền, filter/pagination, multipart, conflict, PII/file, locale và luồng demo. Tại thời điểm tích hợp không có backend chạy ở `127.0.0.1:8080`, nên chưa xác minh một phiên thực với PostgreSQL, worker, Poppler và AI provider. Health thành công cũng không chứng minh OCR hoạt động.
 
 Không có API logout/revocation, refresh token, directory manager, status-history riêng, export/webhook hoặc platform admin. Lựa chọn ngôn ngữ lưu riêng trong `localStorage` (`docsense:locale`); token không lưu ở đó. Văn bản và bằng chứng do doanh nghiệp cung cấp giữ nguyên ngôn ngữ nguồn.
+
+## Vị trí sử dụng hai API gợi ý
+
+- `POST /document-types/suggestions`: nút **Gợi ý bằng AI** ngay trong form thêm/sửa loại giấy tờ. Đề xuất trường và kiểm tra đặc biệt vào bản nháp, giữ severity/PII/type từ phản hồi.
+- `POST /dossier-types/{code}/comparison-rules/suggestions`: nút **Gợi ý quy tắc bằng AI** trong form loại hồ sơ đã lưu. Kiểm tra `configuration_version`, thêm đề xuất vào các quy tắc đang soạn và kiểm tra tham chiếu hiện tại trước khi hiển thị. Chưa có code thì hướng dẫn lưu loại hồ sơ trước.
+- Hai luồng chỉ gọi API gợi ý khi bấm nút; không tự POST/PUT lưu catalog. Chỉ **Lưu phiên bản** mới ghi cấu hình. Nút không bị giấu ở demo; hiển thị disabled và lý do cần tài khoản admin công ty.
+- Màn chờ AI bám request thật, không có phần trăm hoặc tiến độ giả; kết thúc khi trả về, lỗi hoặc timeout. AI có deadline proxy 120s/client 125s; các request khác giữ 30s/10s.

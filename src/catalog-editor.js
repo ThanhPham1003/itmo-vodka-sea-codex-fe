@@ -1,4 +1,5 @@
-import { modal, closeModal, escape as e, icon } from './ui.js';
+import { modal, closeModal, escape as e, icon, setButtonLoading, setFieldError } from './ui.js';
+import { catalogView } from './backend-service.js';
 
 const fieldTypes = [['text','Văn bản'], ['number','Số'], ['date','Ngày tháng'], ['boolean','Có / Không'], ['identifier','Mã định danh'], ['money','Tiền tệ'], ['area','Diện tích']];
 const operators = {
@@ -13,12 +14,24 @@ const textInput = (name, value, placeholder = '', required = true) => `<input na
 const removeButton = (kind, index, label) => `<button class="button small" type="button" data-editor-remove="${kind}" data-editor-index="${index}" aria-label="${e(label)}">${icon('close')} Xóa</button>`;
 
 /** Shared editor. The service controls persistence and DTO conversion. */
-export function openCatalogEditor({ demo, kind, selected = null, onSaved = () => {} }) {
+export function openCatalogEditor({ demo, kind, selected = null, onSaved = () => {}, startWithAi = false }) {
   const isDocument = kind === 'documents';
+  const savedType = Boolean(selected?.code);
+  const aiHint = !demo.live ? 'Đăng nhập tài khoản công ty để dùng gợi ý AI.' : demo.session?.role!=='company_admin' ? 'Chỉ quản trị công ty được dùng gợi ý AI.' : !isDocument&&!savedType ? 'Lưu loại hồ sơ trước khi gợi ý quy tắc đối soát.' : '';
   const availableFieldTypes=demo.live?fieldTypes:fieldTypes.slice(0,4);
   const documentTypes = demo.listDocumentTypes().filter(type=>type.active!==false);
   let fields = selected?.fields?.map(field => ({ ...field })) || [{ label:'Họ và tên', type:'text', required:true, pii:true }];
   let rules = selected?.rules?.map(rule => ({ ...rule })) || [];
+  let specialRequirements=selected?.specialRequirements||[];
+  let aiBusy=false;
+
+  function readSpecial(data) {
+    return String(data.get('special')||'').split('\n').map(line=>line.trim()).filter(Boolean).map((description,index)=>{
+      if(!demo.live)return description;
+      const previous=specialRequirements.find(item=>item.description===description)||specialRequirements[index];
+      return {...(typeof previous==='object'?previous:{}),description,severity:previous?.severity||'WARNING'};
+    });
+  }
 
   const selectedSources = () => {
     const checked = [...document.querySelectorAll('#catalog-editor input[name="documents"]:checked')].map(input => input.value);
@@ -108,23 +121,26 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
     </fieldset>`;
   }).join('') || '<p class="editor-empty muted">Chưa có loại giấy tờ. Tạo loại giấy tờ trước khi cấu hình bộ hồ sơ.</p>';
 
-  const title = selected ? `Chỉnh sửa ${isDocument ? 'loại giấy tờ' : 'loại bộ hồ sơ'}` : `Thêm ${isDocument ? 'loại giấy tờ' : 'loại bộ hồ sơ'}`;
-  const description = selected ? `Thay đổi được lưu thành phiên bản ${selected.version + 1}. Hồ sơ đang xử lý giữ nguyên cấu hình.` : 'Đặt tên và chọn nội dung phù hợp với quy trình của doanh nghiệp.';
-  const context = selected ? `<p class="editor-hint muted">Mã hiện tại: <span>${e(selected.code)}</span> · Do hệ thống tạo, được giữ nguyên khi đổi tên.</p>` : '<p class="editor-hint muted">Mã được hệ thống tạo tự động khi lưu.</p>';
+  const title = savedType ? `Chỉnh sửa ${isDocument ? 'loại giấy tờ' : 'loại bộ hồ sơ'}` : `Thêm ${isDocument ? 'loại giấy tờ' : 'loại bộ hồ sơ'}`;
+  const description = savedType ? `Thay đổi được lưu thành phiên bản ${selected.version + 1}. Hồ sơ đang xử lý giữ nguyên cấu hình.` : 'Đặt tên và chọn nội dung phù hợp với quy trình của doanh nghiệp.';
+  const context = savedType ? `<p class="editor-hint muted">Mã hiện tại: <span>${e(selected.code)}</span> · Do hệ thống tạo, được giữ nguyên khi đổi tên.</p>` : '<p class="editor-hint muted">Mã được hệ thống tạo tự động khi lưu.</p>';
+  const aiPanel=`<section class="catalog-ai-assist" aria-labelledby="catalog-ai-heading"><div class="catalog-ai-heading">${icon('sparkles')}<div><h3 id="catalog-ai-heading">${isDocument?'AI gợi ý trường trích xuất':'AI gợi ý quy tắc đối soát'}</h3><p>${isDocument?'Mô tả giấy tờ để AI đề xuất các trường và yêu cầu kiểm tra.':'AI dùng cấu hình đã lưu để đề xuất quy tắc. Gợi ý được thêm vào các quy tắc đang soạn.'}</p></div></div><label>Mô tả cho AI<textarea name="aiDescription" rows="2" maxlength="4000" placeholder="${isDocument?'Ví dụ: CCCD cần lấy họ tên, số định danh, ngày sinh và ngày hết hạn.':'Ví dụ: Đối chiếu họ tên và số định danh chủ sở hữu giữa các giấy tờ.'}" ${aiHint?'disabled':''}></textarea></label><div class="catalog-ai-actions"><button class="button ai-suggest-button" type="button" data-editor-suggest ${aiHint?'disabled':''}>${icon('sparkles')}${isDocument?'Gợi ý bằng AI':'Gợi ý quy tắc bằng AI'}</button><small>${aiHint||'Chỉ tạo bản nháp. Rà soát rồi bấm Lưu phiên bản để áp dụng.'}</small></div><p class="form-error" id="catalog-ai-error" role="alert"></p><p class="catalog-ai-result" id="catalog-ai-result" role="status" aria-live="polite"></p></section>`;
   const body = `<div id="catalog-editor">
+    ${aiPanel}
     <div class="editor-section"><label>Tên hiển thị${textInput('name',selected?.name,isDocument ? 'Ví dụ: Căn cước công dân' : 'Ví dụ: Mua bán nhà đất')}</label>
     <label>${isDocument ? 'Mô tả nhận diện giấy tờ' : 'Mô tả nghiệp vụ'}<textarea name="description" rows="3" maxlength="1200" placeholder="Mô tả mục đích và thông tin cần lưu ý…">${e(selected?.description || '')}</textarea></label>${context}</div>
     ${isDocument ? `<section class="editor-section"><div class="editor-heading"><h3>Trường cần trích xuất</h3><button class="button small" type="button" data-editor-add="field">${icon('plus')} Thêm trường</button></div><div id="editor-fields">${fieldRows()}</div></section><section class="editor-section"><h3>Yêu cầu kiểm tra đặc biệt</h3><label>Mỗi dòng là một yêu cầu<textarea name="special" rows="3" maxlength="3000" placeholder="Ví dụ: Kiểm tra giấy tờ còn thời hạn sử dụng">${e((selected?.specialRequirements || []).map(value => typeof value === 'string' ? value : value.description || value.name || '').join('\n'))}</textarea></label></section>` : `<section class="editor-section"><div class="editor-heading"><h3>Giấy tờ trong bộ hồ sơ</h3></div><p class="editor-hint muted">Chọn giấy tờ và xác định loại bắt buộc, tùy chọn hoặc phát sinh theo điều kiện.</p>${documentChoices()}</section><section class="editor-section"><div class="editor-heading"><h3>Quy tắc đối soát</h3><button class="button small" type="button" data-editor-add="rule">${icon('plus')} Thêm quy tắc</button></div><div id="editor-rules"></div></section>`}
     <div class="notice">${icon('history')} ${demo.live?'Lưu tạo phiên bản mới trên máy chủ. Hồ sơ hiện có giữ nguyên snapshot.':'Cấu hình trong bản demo chỉ được lưu trong phiên làm việc hiện tại.'}</div>
   </div>`;
 
-  modal(title,description,body,'Lưu phiên bản',async data => {
+  const form=modal(title,description,body,'Lưu phiên bản',async data => {
+    if(aiBusy)return;
     const base = { code:selected?.code, name:String(data.get('name') || '').trim(), description:String(data.get('description') || '').trim() };
     let saved;
     if (isDocument) {
       const nextFields = readFields();
       if (!nextFields.length) throw new Error('Thêm ít nhất một trường cần trích xuất.');
-      saved = await demo.saveDocumentType({ ...base, fields:nextFields, specialRequirements:String(data.get('special') || '').split('\n').map(line => line.trim()).filter(Boolean) });
+      saved = await demo.saveDocumentType({ ...base, fields:nextFields, specialRequirements:readSpecial(data) });
     } else {
       const documents = data.getAll('documents').flatMap(code => {
         const mode = data.get(`mode-${code}`);
@@ -147,9 +163,52 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
   container.closest('.modal').classList.add('catalog-editor-modal');
   if (!isDocument) container.querySelector('#editor-rules').innerHTML = ruleRows();
 
+  async function generateSuggestions(target) {
+    if(aiBusy||aiHint||form.dataset.submitting||form.dataset.conflict)return;
+    const prompt=form.elements.aiDescription.value.trim()||form.elements.description.value.trim()||form.elements.name.value.trim();
+    if(!prompt){setFieldError(form.elements.aiDescription,'Nhập mô tả để AI tạo gợi ý.');form.elements.aiDescription.focus();return;}
+    // Capture the draft before disabling controls; failures leave it untouched.
+    const previousRules=isDocument?null:readRules();
+    const dialog=form.closest('.modal');
+    const controls=[...dialog.querySelectorAll('input,select,textarea,button')].filter(el=>el!==target).map(el=>({el,disabled:el.disabled}));
+    aiBusy=true;form.dataset.aiPending='true';dialog.setAttribute('aria-busy','true');
+    controls.forEach(({el})=>el.disabled=true);setButtonLoading(target,true,'AI đang tạo gợi ý…');
+    const error=container.querySelector('#catalog-ai-error'),result=container.querySelector('#catalog-ai-result');error.textContent='';result.textContent='';
+    try {
+      const draft=isDocument?await demo.suggestDocumentFields(prompt):await demo.suggestComparisonRules(selected.code,prompt);
+      if(!form.isConnected)return;
+      if(draft?.draft!==true)throw new Error('Backend không trả bản nháp hợp lệ.');
+      if(isDocument) {
+        if(!draft.definition||!Array.isArray(draft.definition.fields)||!draft.definition.fields.length)throw new Error('AI chưa trả trường trích xuất phù hợp. Hãy bổ sung mô tả rồi thử lại.');
+        const proposal=catalogView({definition:draft.definition},'documents');
+        fields=proposal.fields;specialRequirements=proposal.specialRequirements;
+        if(!form.elements.name.value.trim())form.elements.name.value=proposal.name||'';
+        if(!form.elements.description.value.trim())form.elements.description.value=proposal.description||'';
+        form.elements.special.value=specialRequirements.map(item=>item.description||'').join('\n');
+        container.querySelector('#editor-fields').innerHTML=fieldRows();
+        result.textContent='Đã nhận gợi ý trường. Kiểm tra nội dung bên dưới trước khi lưu phiên bản.';
+      } else {
+        if(draft.configuration_version!==selected.version)throw new Error('Cấu hình đã thay đổi. Tải lại trước khi gợi ý.');
+        const suggested=catalogView({definition:{rules:draft.rules}},'dossiers').rules;
+        if(!suggested.length){result.textContent='AI chưa tìm thấy quy tắc phù hợp. Hãy bổ sung mô tả rồi thử lại.';return;}
+        const sources=selectedSources();
+        if(suggested.some(rule=>[rule.left,rule.right].some(ref=>!sources.find(type=>type.code===ref.document_type)?.fields.some(field=>field.key===ref.field_key))))throw new Error('Gợi ý không khớp giấy tờ hoặc trường đang chọn. Lưu cấu hình mới rồi thử lại.');
+        rules=[...previousRules,...suggested];
+        container.querySelector('#editor-rules').innerHTML=ruleRows();
+        result.textContent='Đã thêm gợi ý quy tắc vào bản nháp. Rà soát trước khi lưu phiên bản.';
+      }
+    } catch(failure) {if(error.isConnected)error.textContent=failure.message+(failure.requestId?' · Request ID: '+failure.requestId:'');}
+    finally {
+      aiBusy=false;delete form.dataset.aiPending;dialog.removeAttribute('aria-busy');
+      if(target.isConnected)setButtonLoading(target,false);
+      controls.forEach(({el,disabled})=>{if(el.isConnected)el.disabled=disabled;});
+    }
+  }
+
   container.addEventListener('click', event => {
     const target = event.target.closest('button');
     if (!target) return;
+    if(target.hasAttribute('data-editor-suggest')){generateSuggestions(target);return;}
     if (target.dataset.editorAdd === 'field') {
       fields = readFields(); fields.push({ label:'',type:'text',required:false,pii:false });
       container.querySelector('#editor-fields').innerHTML = fieldRows();
@@ -189,4 +248,5 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
       container.querySelector(`[name="${focusName}"]`)?.focus();
     }
   });
+  if(startWithAi){form.elements.aiDescription.focus();container.querySelector('.catalog-ai-assist').scrollIntoView({block:'nearest'});}
 }

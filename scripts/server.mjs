@@ -6,7 +6,7 @@ import { realpathSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPath(new URL('../', import.meta.url)), backend = process.env.BACKEND_ORIGIN || 'http://127.0.0.1:8080', proxyTimeoutMs = 30000 } = {}) {
+export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPath(new URL('../', import.meta.url)), backend = process.env.BACKEND_ORIGIN || 'http://127.0.0.1:8080', proxyTimeoutMs = 30000, aiTimeoutMs = 120000 } = {}) {
   const staticRoot = realpathSync(resolve(root));
   const upstream = new URL(backend);
   if (!['http:','https:'].includes(upstream.protocol) || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash) throw new Error('BACKEND_ORIGIN must be an HTTP(S) origin without credentials, path or query.');
@@ -29,8 +29,9 @@ export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPat
         for (const name of allow) if (req.headers[name]) headers.set(name,req.headers[name]);
         headers.set('Accept-Encoding','identity');
         const hasBody = !['GET','HEAD'].includes(req.method);
+        const aiSuggestion=req.method==='POST'&&/^\/api\/v1\/(?:document-types\/suggestions|dossier-types\/suggestions|dossier-types\/[^/]+\/comparison-rules\/suggestions)$/.test(url.pathname);
         const response = await fetch(new URL(health ? '/health' : url.pathname + url.search, upstream), {
-          method:req.method, headers, signal:AbortSignal.any([controller.signal,AbortSignal.timeout(health ? Math.min(proxyTimeoutMs,5000) : proxyTimeoutMs)]),
+          method:req.method, headers, signal:AbortSignal.any([controller.signal,AbortSignal.timeout(health ? Math.min(proxyTimeoutMs,5000) : aiSuggestion ? aiTimeoutMs : proxyTimeoutMs)]),
           redirect:'manual', ...(hasBody ? {body:req,duplex:'half'} : {})
         });
         // Never follow redirects carrying credentials to another service.

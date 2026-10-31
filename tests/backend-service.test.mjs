@@ -152,3 +152,11 @@ test('access updates send explicit false and reject a missing status instead of 
   assert.throws(()=>service.updateMember(uid,{role:'manager',status:null,permissions:[]}),error=>error.status===400);
   assert.equal(calls.length,count);
 });
+test('each AI action posts its description to the corresponding suggestion endpoint',async()=>{
+  const {service,calls}=setup(()=>response({draft:true}));await service.login('admin','long-password');
+  await service.suggestDocumentFields('Identity fields');await service.suggestComparisonRules('sale','Compare owner names');
+  assert.deepEqual(calls.slice(-2).map(call=>[call.path,call.init.method,JSON.parse(call.init.body)]),[
+    ['/api/v1/document-types/suggestions','POST',{description:'Identity fields'}],
+    ['/api/v1/dossier-types/sale/comparison-rules/suggestions','POST',{description:'Compare owner names'}]
+  ]);
+});

@@ -217,6 +217,27 @@ Bộ hồ sơ → giấy tờ → trường trích xuất. Thay đổi cấu hì
 Thêm loại giấy tờ|Add document type
 Thêm loại bộ hồ sơ|Add dossier type
 Gợi ý bằng AI|AI suggestions
+Gợi ý quy tắc bằng AI|Suggest rules with AI
+AI gợi ý trường trích xuất|AI extraction field suggestions
+AI gợi ý quy tắc đối soát|AI comparison rule suggestions
+Đăng nhập tài khoản công ty để dùng gợi ý AI.|Sign in with a company account to use AI suggestions.
+Chỉ quản trị công ty được dùng gợi ý AI.|Only company administrators can use AI suggestions.
+Lưu loại hồ sơ trước khi gợi ý quy tắc đối soát.|Save the dossier type before requesting comparison rules.
+Mô tả giấy tờ để AI đề xuất các trường và yêu cầu kiểm tra.|Describe the document so AI can suggest extraction fields and checks.
+AI dùng cấu hình đã lưu để đề xuất quy tắc. Gợi ý được thêm vào các quy tắc đang soạn.|AI uses the saved configuration to suggest rules. Suggestions are added to your draft rules.
+Mô tả cho AI|Description for AI
+Chỉ tạo bản nháp. Rà soát rồi bấm Lưu phiên bản để áp dụng.|Creates a draft only. Review it and save a version to apply.
+Nhập mô tả để AI tạo gợi ý.|Enter a description to generate AI suggestions.
+AI đang tạo gợi ý…|AI is preparing suggestions…
+AI đang tạo gợi ý|AI is preparing suggestions
+Đang phân tích mô tả và đề xuất cấu hình. Gợi ý sẽ xuất hiện để bạn rà soát.|Analyzing your description and preparing suggestions for you to review.
+AI chưa trả trường trích xuất phù hợp. Hãy bổ sung mô tả rồi thử lại.|AI did not return suitable fields. Add more detail and try again.
+Đã nhận gợi ý trường. Kiểm tra nội dung bên dưới trước khi lưu phiên bản.|Field suggestions received. Review them below before saving a version.
+AI chưa tìm thấy quy tắc phù hợp. Hãy bổ sung mô tả rồi thử lại.|AI found no suitable rules. Add more detail and try again.
+Gợi ý không khớp giấy tờ hoặc trường đang chọn. Lưu cấu hình mới rồi thử lại.|The suggestions do not match the selected documents or fields. Save the new configuration and try again.
+Đã thêm gợi ý quy tắc vào bản nháp. Rà soát trước khi lưu phiên bản.|Suggested rules were added to your draft. Review them before saving a version.
+Ví dụ: CCCD cần lấy họ tên, số định danh, ngày sinh và ngày hết hạn.|Example: Extract the full name, ID number, birth date and expiry date from an identity card.
+Ví dụ: Đối chiếu họ tên và số định danh chủ sở hữu giữa các giấy tờ.|Example: Compare the owner's full name and ID number across documents.
 Gợi ý luật|Suggest rules
 Loại giấy tờ|Document type
 DANH MỤC BỘ HỒ SƠ|DOSSIER TYPES

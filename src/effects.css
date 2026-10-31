@@ -339,6 +339,17 @@ body.menu-open { overflow: hidden; }
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
 }
+.network-ai-art{display:none;position:relative;width:114px;height:114px;margin:22px auto;color:#4caf4f}
+.is-ai-waiting .network-spinner{display:none}
+.is-ai-waiting .network-ai-art{display:grid;place-items:center}
+.network-ai-core{display:grid;place-items:center;width:64px;height:64px;background:#edf7ed;border:1px solid #d4e9d5;border-radius:20px;animation:docsense-ai-breathe 2s ease-in-out infinite}
+.network-ai-core>.icon{width:32px;height:32px}
+.network-ai-orbit{position:absolute;inset:0;border:1px dashed #9bcea0;border-radius:50%;animation:docsense-loading 9s linear infinite}
+.network-ai-art>i{position:absolute;width:10px;height:10px;background:#4caf4f;border:3px solid #fff;border-radius:50%;animation:docsense-ai-breathe 1.6s ease-in-out infinite}
+.network-ai-art>i:nth-of-type(1){top:0;left:52px}
+.network-ai-art>i:nth-of-type(2){bottom:17px;left:5px;animation-delay:.3s}
+.network-ai-art>i:nth-of-type(3){bottom:17px;right:5px;animation-delay:.6s}
+@keyframes docsense-ai-breathe{0%,100%{transform:scale(.94);opacity:.6}50%{transform:scale(1.04);opacity:1}}
 @media (max-width: 560px) {
   .network-wait-overlay { padding: 20px; }
   .network-wait-card { padding: 27px 23px; }
@@ -361,6 +372,9 @@ body.menu-open { overflow: hidden; }
   .network-wait-overlay.is-visible,
   .network-spinner,
   .network-skeleton > span,
+  .network-ai-orbit,
+  .network-ai-core,
+  .network-ai-art>i,
   .paper-fields [data-source-field].source-highlight,
   .badge.PROCESSING > i {
     animation: none !important;

@@ -17,6 +17,7 @@ const paths = {
   history:'<path d="M3 10a9 9 0 1 1 2 8M3 4v6h6m3-3v5l3 2"/>', book:'<path d="M3 3h6l3 3 3-3h6v17h-6l-3 2-3-2H3Zm9 3v16"/>',
   link:'<path d="m10 13 4-4m-7 6-1 1a4 4 0 0 0 6 6l4-4a4 4 0 0 0 0-6m1-3 1-1a4 4 0 0 0-6-6L8 6a4 4 0 0 0 0 6"/>',
   refresh:'<path d="M20 7a9 9 0 1 0 1 9m-1-14v5h-5"/>', menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  sparkles:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4M4 18v4m-2-2h4"/>',
 };
 export const icon = name => `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.file}</svg>`;
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -81,7 +82,7 @@ export function modal(title, description, content, submitLabel, onSubmit) {
   document.body.classList.add('modal-open');
   const form=document.querySelector('#modal-form');bindFormValidation(form);
   form.onsubmit = async event => {
-    event.preventDefault();if(form.dataset.submitting||form.dataset.conflict)return;
+    event.preventDefault();if(form.dataset.submitting||form.dataset.aiPending||form.dataset.conflict)return;
     if(!form.checkValidity()){form.querySelector(':invalid')?.focus();return;}
     const data=new FormData(form);const submit=event.submitter||form.querySelector('[type="submit"]');
     const dialog=form.closest('.modal');form.dataset.submitting='true';dialog.setAttribute('aria-busy','true');setButtonLoading(submit,true);
@@ -105,19 +106,27 @@ export function trapModal(event) {
 
 export function bindRequestLoading() {
   const host=document.querySelector('#network-status');if(!host)return;
-  let timer,roots=[];
+  let timer,roots=[],aiPending=0;
+  const update=()=>{
+    const card=host.querySelector('.network-wait-card');if(!card)return;
+    const ai=aiPending>0;card.classList.toggle('is-ai-waiting',ai);
+    host.querySelector('.network-wait-title').textContent=ai?'AI đang tạo gợi ý':'Đang chờ phản hồi từ máy chủ';
+    host.querySelector('.network-wait-description').textContent=ai?'Đang phân tích mô tả và đề xuất cấu hình. Gợi ý sẽ xuất hiện để bạn rà soát.':'Vui lòng chờ trong giây lát…';
+    const pending=Number(host.dataset.pending);host.querySelector('.network-request-count').textContent=pending>1?`${pending} yêu cầu đang được xử lý`:'Đang kết nối với máy chủ';
+  };
   const hide=()=>{clearTimeout(timer);timer=null;host.innerHTML='';host.hidden=true;for(const [root,inert,busy]of roots){root.inert=inert;if(busy===null)root.removeAttribute('aria-busy');else root.setAttribute('aria-busy',busy);}roots=[];};
   window.addEventListener('docsense:request-state',event=>{
+    if(event.detail.path?.endsWith('/suggestions'))aiPending=Math.max(0,aiPending+(event.detail.phase==='start'?1:-1));
     const pending=event.detail.pending;host.dataset.pending=String(pending);
-    if(!pending){hide();return;}
-    const count=host.querySelector('.network-request-count');if(count)count.textContent=pending>1?`${pending} yêu cầu đang được xử lý`:'Đang kết nối với máy chủ';
+    if(!pending){aiPending=0;hide();return;}
+    update();
     if(host.querySelector('.is-visible')||timer)return;
     timer=setTimeout(()=>{
       timer=null;host.hidden=false;
       roots=[document.querySelector('#app'),document.querySelector('#modal-root')].filter(Boolean).map(root=>[root,root.inert,root.getAttribute('aria-busy')]);
       for(const [root]of roots){root.inert=true;root.setAttribute('aria-busy','true');}
-      host.innerHTML='<div class="network-wait-overlay is-visible" role="status" aria-live="polite"><div class="network-wait-card"><span class="network-brand"><img src="/assets/logo.svg" alt="" width="30" height="30"/>DocSense AI</span><span class="network-spinner" aria-hidden="true"></span><strong class="network-wait-title">Đang chờ phản hồi từ máy chủ</strong><p class="network-wait-description">Vui lòng chờ trong giây lát…</p><div class="network-skeleton" aria-hidden="true"><span></span><span></span><span></span></div><small class="network-request-count"></small></div></div>';
-      host.querySelector('.network-request-count').textContent=Number(host.dataset.pending)>1?host.dataset.pending+' yêu cầu đang được xử lý':'Đang kết nối với máy chủ';
+      host.innerHTML='<div class="network-wait-overlay is-visible" role="status" aria-live="polite"><div class="network-wait-card"><span class="network-brand"><img src="/assets/logo.svg" alt="" width="30" height="30"/>DocSense AI</span><span class="network-spinner" aria-hidden="true"></span><div class="network-ai-art" aria-hidden="true"><span class="network-ai-orbit"></span><span class="network-ai-core">'+icon('sparkles')+'</span><i></i><i></i><i></i></div><strong class="network-wait-title"></strong><p class="network-wait-description"></p><div class="network-skeleton" aria-hidden="true"><span></span><span></span><span></span></div><small class="network-request-count"></small></div></div>';
+      update();
     },150);
   });
   window.addEventListener('pagehide',hide);

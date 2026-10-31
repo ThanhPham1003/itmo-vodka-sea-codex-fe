@@ -231,7 +231,13 @@ export function createBackendService(client) {
       return catalogView(result,'dossiers');
     },
     archiveCatalog:(kind,code)=>data(`/${kind==='documents'?'document-types':'dossier-types'}/${key(code)}`,{method:'DELETE'}),
-    suggestCatalog:(kind,description,code)=>data(`/${kind==='documents'?'document-types':'dossier-types'}${code?'/'+key(code)+'/comparison-rules':''}/suggestions`,{method:'POST',body:{description}})
+    suggestDocumentFields:description=>data('/document-types/suggestions',{method:'POST',body:{description},timeoutMs:125000}),
+    suggestComparisonRules:(code,description)=>data(`/dossier-types/${key(code)}/comparison-rules/suggestions`,{method:'POST',body:{description},timeoutMs:125000}),
+    suggestCatalog(kind,description,code) {
+      if(kind==='documents')return service.suggestDocumentFields(description);
+      if(code)return service.suggestComparisonRules(code,description);
+      return data('/dossier-types/suggestions',{method:'POST',body:{description},timeoutMs:125000});
+    }
   };
   return service;
 }
