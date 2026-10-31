@@ -46,3 +46,30 @@ body{font-size:14px}.brand>span{color:var(--primary);margin-left:-8px}.avatar-bu
 
 /* DocSense AI wordmark fits the workspace navigation. */
 .sidebar .brand{font-size:24px;letter-spacing:-1px;gap:8px;white-space:nowrap}.sidebar .brand>span{color:#4caf4f}
+
+/* Keep account access visible while the workspace menu scrolls on short screens. */
+.sidebar{--sidebar-gutter:18px;height:100dvh;padding-left:0;padding-right:0;overflow:hidden}
+.sidebar-scroll{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin;padding:0 var(--sidebar-gutter)}
+.sidebar-scroll>*{flex-shrink:0}
+.sidebar>.user-button{flex-shrink:0;margin-left:var(--sidebar-gutter);margin-right:var(--sidebar-gutter);width:calc(100% - 2 * var(--sidebar-gutter));background:#fff}
+@media(min-width:1600px){.sidebar{--sidebar-gutter:24px}}
+@media(max-width:1200px){.sidebar{--sidebar-gutter:13px}}
+@media(max-width:1000px){.sidebar{--sidebar-gutter:10px}}
+@media(max-width:760px){.sidebar{--sidebar-gutter:18px}}
+
+.language-switch{display:inline-flex;align-items:center;margin:0;flex-shrink:0}
+.language-switch select{width:auto;min-height:36px;border:1px solid var(--line,#e5e7eb);border-radius:8px;padding:6px 26px 6px 10px;background:#fff;color:var(--ink,#253329);font:inherit;font-size:12px;cursor:pointer}
+.language-switch select:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.auth-main{position:relative}
+.auth-language{position:absolute;top:20px;right:24px;z-index:1}
+.auth-main .auth-card{margin-top:32px}
+.page-loading{display:flex;justify-content:center;align-items:center;gap:12px;min-height:240px;color:var(--muted)}
+.pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.pagination>span{margin-right:auto}
+.source-placeholder{display:grid;place-items:center;align-content:center;gap:16px;min-height:440px;padding:32px;text-align:center;color:var(--muted)}
+.source-pdf{display:block;width:100%;height:650px;border:0;background:#e9ece9}
+.source-image{position:relative;width:100%;overflow:hidden}
+.source-image>img{display:block;width:100%;height:auto}
+.source-bounds{position:absolute;border:2px solid #4caf4f;background:#4caf4f22;pointer-events:none}
+.source-evidence{padding:16px;background:#f0f8f0;border:1px solid #4caf4f;border-radius:8px;margin:12px;overflow-wrap:anywhere}
+@media(max-width:760px){.auth-language{top:12px;right:18px}.top-actions{gap:8px}.top-actions .demo-pill{display:none}.language-switch select{max-width:115px}.source-pdf{height:480px}.source-placeholder{min-height:260px}}

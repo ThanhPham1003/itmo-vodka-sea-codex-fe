@@ -21,7 +21,7 @@ const paths = {
 export const icon = name => `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.file}</svg>`;
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 export const avatar = (name, tone = 0) => `<span class="avatar tone-${tone % 4}">${escape(name.split(' ').slice(-2).map(x => x[0]).join(''))}</span>`;
-export const statusNames = { PROCESSING:'Đang xử lý', MISSING_DOCUMENT:'Thiếu giấy tờ', INVALID_DOCUMENT:'Có sai lệch', VALID_DOCUMENT:'Chờ kiểm duyệt', APPROVED_DOCUMENT:'Đã phê duyệt', REJECTED:'Đã từ chối', UPLOADED:'Đã tiếp nhận', EXTRACTED:'Đã trích xuất', FAILED:'Xử lý lỗi', UNKNOWN:'Chờ phân loại', PENDING_CONDITION:'Chờ xác định', NOT_REQUIRED:'Không áp dụng', RESOLVED:'Khớp', OPEN:'Cần xử lý', PENDING_DOCUMENTS:'Chờ dữ liệu', ACKNOWLEDGED:'Đã xác nhận', active:'Hoạt động', invited:'Đã mời', suspended:'Tạm ngưng' };
+export const statusNames = { PROCESSING:'Đang xử lý', MISSING_DOCUMENT:'Thiếu giấy tờ', INVALID_DOCUMENT:'Có sai lệch', VALID_DOCUMENT:'Chờ kiểm duyệt', APPROVED_DOCUMENT:'Đã phê duyệt', REJECTED:'Đã từ chối', UPLOADED:'Đã tiếp nhận', EXTRACTED:'Đã trích xuất', FAILED:'Xử lý lỗi', DUPLICATE:'Trùng nội dung', UNKNOWN:'Chờ phân loại', PENDING_CONDITION:'Chờ xác định', NOT_REQUIRED:'Không áp dụng', RESOLVED:'Khớp', OPEN:'Cần xử lý', PENDING_DOCUMENTS:'Chờ dữ liệu', ACKNOWLEDGED:'Đã xác nhận', active:'Hoạt động', invited:'Đã mời', suspended:'Tạm ngưng' };
 export const badge = status => `<span class="badge ${status}"><i></i>${statusNames[status] || escape(status)}</span>`;
 export const empty = (title, description, glyph = 'folder') => `<div class="empty">${icon(glyph)}<h3>${title}</h3><p>${description}</p></div>`;
 export const button = (label, action, glyph = '', style = '') => `<button class="button ${style}" data-action="${action}">${glyph ? icon(glyph) : ''}${label}</button>`;
@@ -81,14 +81,17 @@ export function modal(title, description, content, submitLabel, onSubmit) {
   document.body.classList.add('modal-open');
   const form=document.querySelector('#modal-form');bindFormValidation(form);
   form.onsubmit = async event => {
-    event.preventDefault();if(form.dataset.submitting)return;
+    event.preventDefault();if(form.dataset.submitting||form.dataset.conflict)return;
     if(!form.checkValidity()){form.querySelector(':invalid')?.focus();return;}
     const data=new FormData(form);const submit=event.submitter||form.querySelector('[type="submit"]');
     const dialog=form.closest('.modal');form.dataset.submitting='true';dialog.setAttribute('aria-busy','true');setButtonLoading(submit,true);
     const controls=[...dialog.querySelectorAll('input,select,textarea,button')].filter(el=>el!==submit).map(el=>({el,disabled:el.disabled}));controls.forEach(({el})=>el.disabled=true);
     const error=form.querySelector('#form-error');if(error)error.textContent='';
-    try { await onSubmit(data); } catch (failure) { if(error?.isConnected){error.textContent=failure.message;error.scrollIntoView({block:'nearest'});}else notify(failure.message); }
-    finally { if(submit?.isConnected)setButtonLoading(submit,false);controls.forEach(({el,disabled})=>{if(el.isConnected)el.disabled=disabled;});dialog.removeAttribute('aria-busy');delete form.dataset.submitting; }
+    try { await onSubmit(data); } catch (failure) {
+      if(error?.isConnected){error.textContent=failure.message;error.scrollIntoView({block:'nearest'});}else notify(failure.message);
+      if(failure.reloadRequired){form.dataset.conflict='true';window.dispatchEvent(new Event('docsense:conflict'));}
+    }
+    finally { if(submit?.isConnected){setButtonLoading(submit,false);if(form.dataset.conflict)submit.disabled=true;}controls.forEach(({el,disabled})=>{if(el.isConnected)el.disabled=disabled;});dialog.removeAttribute('aria-busy');delete form.dataset.submitting; }
   };
   (form.querySelector('input:not([type="hidden"]),select,textarea')||document.querySelector('.modal button'))?.focus();
   return form;

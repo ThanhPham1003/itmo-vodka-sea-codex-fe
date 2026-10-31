@@ -1,6 +1,6 @@
 /**
  * Browser-only demonstration of the backend blueprint, NOT a security boundary.
- * The real backend currently exposes GET /health only. No business method below
+ * This service is isolated from the live backend adapter. No business method below
  * sends a request or performs OCR. State is discarded on page reload.
  */
 export const roles = {

@@ -2,7 +2,9 @@
 
 Giao diện tiếng Việt cho nền tảng xử lý hồ sơ bất động sản đa tenant. Nghiệp vụ dựa trên backend Go tại `../itmo-vodka-sea-codex-be`; giao diện áp dụng hướng xanh lá, nền trắng/xám nhạt và typography tối giản từ [theme Figma được cung cấp](https://www.figma.com/design/BD8sjYpsgePgzMuO1Yliww/?node-id=211-1738).
 
-**Backend hiện chỉ triển khai `GET /health`.** Các luồng hồ sơ, thành viên, catalog, OCR, đối soát và duyệt trong frontend dùng dữ liệu mô phỏng trong bộ nhớ. Tải lại trang sẽ đặt lại dữ liệu; không gửi email, gọi AI, upload tài liệu hoặc phê duyệt thật.
+Frontend đã nối API nghiệp vụ của backend và đối chiếu đến commit **`1a3ee15` (31/10/2026)**: đăng ký/đăng nhập, thành viên, catalog, hồ sơ, upload, xử lý tài liệu, kiểm duyệt, dashboard và audit. Chế độ mặc định dùng dữ liệu backend; `?mode=demo` dùng dữ liệu mẫu riêng trong bộ nhớ.
+
+Giao diện có **Tiếng Việt / English** trên trang xác thực và thanh công cụ workspace. Lựa chọn lưu trong `localStorage` (`docsense:locale`), áp dụng ngay cho menu, biểu mẫu, modal, trạng thái, validation và thông báo; giữ nguyên dữ liệu đang nhập, nội dung doanh nghiệp, bằng chứng tài liệu và mã API.
 
 ## Chạy local
 
@@ -15,7 +17,9 @@ npm run dev
 
 Mở **http://127.0.0.1:5173**. Có thể đổi cổng bằng `PORT=4173 npm run dev`.
 
-Trang mặc định là **đăng nhập**; `#/signup` mở đăng ký công ty. Backend chưa có API xác thực nên nút gửi được khóa và không gửi credential. Chọn **Dùng bản demo** hoặc mở `/?mode=demo` để dùng các màn hình nghiệp vụ mẫu. Demo có chọn vai trò, đăng ký công ty mô phỏng, xác nhận mật khẩu và đăng xuất; logout xóa phiên trong bộ nhớ. Chưa có API backend để thu hồi token/phiên.
+Trang mặc định là **đăng nhập**; `#/signup` mở đăng ký doanh nghiệp và admin đầu tiên. Đăng ký xong đăng nhập bằng tài khoản vừa tạo. Mật khẩu mới tối thiểu 12 ký tự, tối đa 72 byte. Bearer token chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Đăng xuất xóa token và dữ liệu phiên trong frontend; backend chưa có API thu hồi token.
+
+Chọn **Dùng bản demo** hoặc mở `/?mode=demo` để dùng màn hình mẫu. Demo không upload hoặc gọi OCR/AI và không tự thay thế dữ liệu khi API thật lỗi.
 
 Để kiểm tra kết nối Go đang chạy:
 
@@ -25,9 +29,15 @@ BACKEND_ORIGIN=http://127.0.0.1:8080 npm run dev
 
 Frontend proxy `/backend/health` tới `/health` của Go và chuyển tiếp `/api/v1/*` nguyên method/query/body/status tới backend, tránh cần CORS cho local. Proxy hỗ trợ JSON, multipart và stream file, giữ request ID và chỉ chuyển tiếp các header cần thiết. Route chưa có ở backend vẫn trả lỗi thật; không được thay bằng dữ liệu mẫu. `BACKEND_ORIGIN` là cấu hình server; không nhập credential hoặc PASETO key vào frontend. Dev server không tự đọc `.env`.
 
-`src/api.js` cung cấp API client dùng Bearer token trong bộ nhớ, JSON/FormData, timeout, request ID, kiểm tra envelope và xử lý 401/403. `/health` là lời gọi nghiệp vụ đã nối thật duy nhất; không tạo hàm login/signup với request/response suy đoán. Các màn hình hồ sơ chỉ mở trong demo cho đến khi backend công bố route và DTO.
+`src/api.js` cung cấp transport JSON/FormData/nội dung file, timeout, request ID, kiểm tra envelope và xử lý 401/403. `src/backend-service.js` ánh xạ DTO Go sang view, lọc/phân trang trên server, giữ version và loại bỏ phản hồi của phiên đã kết thúc. Thao tác có version nhận 409 sẽ tải lại hồ sơ và yêu cầu người dùng mở lại biểu mẫu để kiểm tra trước khi gửi; không tự retry mutation.
 
-Nếu Go chưa chạy, màn hình kết nối hiển thị không sẵn sàng; các luồng demo vẫn dùng được. Health thành công chỉ xác nhận liveness HTTP, không xác nhận API nghiệp vụ/OCR đã có.
+Chi tiết tự poll mỗi 3 giây khi còn tệp chờ/xử lý, tạm dừng khi có modal hoặc tab bị ẩn. File gốc chỉ tải qua Bearer request khi người dùng mở; URL blob được thu hồi khi đổi tài liệu, rời trang hoặc đăng xuất. Giá trị PII vẫn che mặc định; reveal gọi API và ghi audit. OCR/AI cần worker và provider được cấu hình trong backend; lỗi phụ thuộc được hiển thị từ máy chủ.
+
+Nếu Go chưa chạy, frontend hiển thị lỗi kết nối. Health chỉ xác nhận liveness HTTP, không xác nhận DB, worker hoặc OCR đã sẵn sàng.
+
+Backend `1a3ee15` sửa migration `companies.active` / `users.active`; trạng thái không xác định được giữ inactive, frontend không tự kích hoạt tài khoản. Nếu backend không khởi động vì dữ liệu cũ, xem `docs/auth-active-migration.md` trong repo backend. Cấu hình AI mặc định chuyển sang `openai-compatible`; worker vẫn mặc định tắt và model/key được cấu hình ở máy chủ. Không đưa API key vào frontend.
+
+OpenAPI mới cho phép một số danh sách/map trả `null`; frontend chuẩn hóa về trạng thái rỗng. PDF nhiều tài liệu liên kết nhóm tới tệp dẫn xuất, còn trường trích xuất giữ file/trang gốc: chọn nhóm cụ thể khi phân loại và đổi đúng trang nguồn khi xem từng PDF dẫn xuất.
 
 ## Kiểm tra và build
 
@@ -38,7 +48,7 @@ npm run test:e2e
 npm run build
 ```
 
-Browser test dùng Playwright với Google Chrome đã cài trên máy (`channel: chrome`), kiểm tra cả desktop 1440px và mobile 390px. Test tự mở server riêng ở cổng 41873 và dừng khi kết thúc. Ảnh chụp được lưu trong `test-results/`. Build tạo website static trong `dist/`; host production cần reverse proxy `/backend/health` tới Go nếu muốn dùng chức năng kiểm tra kết nối.
+Browser test dùng Playwright với Google Chrome đã cài trên máy (`channel: chrome`), kiểm tra cả desktop 1440px và mobile 390px. Test tự mở server riêng ở cổng 41873 và dừng khi kết thúc. Ảnh chụp được lưu trong `test-results/`. Build tạo website static trong `dist/`; host production cần proxy `/backend/health` tới `/health` và `/api/v1/*` tới Go. Docker image đã có proxy Node.
 
 ## CI và container
 
@@ -56,11 +66,11 @@ API client theo dõi số request đang chạy. Màn chờ xuất hiện sau 150
 
 ```text
 index.html                    Entry frontend mới
-src/                          Giao diện, dữ liệu/logic demo, API health và CSS
+src/                          Giao diện, dữ liệu/logic demo, tích hợp backend, i18n và CSS
 assets/                       Logo và minh họa SVG local
 scripts/                      Dev server, static build, kiểm tra source
 tests/                        Kiểm tra logic và browser
-docs/BACKEND_INTEGRATION.md    Tính năng/API đã có, blueprint và backlog tích hợp
+docs/BACKEND_INTEGRATION.md    Contract đã tích hợp, quyền và giới hạn kiểm chứng
 prototype/                    Prototype WIP cũ, không dùng cho giao diện mới
 PRODUCT_PLAN.md               Kế hoạch frontend cũ; backend được ưu tiên khi mâu thuẫn
 ```

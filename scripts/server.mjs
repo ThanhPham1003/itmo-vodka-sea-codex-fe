@@ -36,7 +36,7 @@ export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPat
         // Never follow redirects carrying credentials to another service.
         if (response.status >= 300 && response.status < 400) { await response.body?.cancel(); jsonError(502,'Backend returned an unexpected redirect'); return; }
         const outgoing = { 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff' };
-        for (const name of ['content-type','x-request-id','content-disposition','content-range','accept-ranges','www-authenticate','retry-after','etag']) {
+        for (const name of ['content-type','content-security-policy','x-request-id','content-disposition','content-range','accept-ranges','www-authenticate','retry-after','etag']) {
           const value=response.headers.get(name); if(value)outgoing[name]=value;
         }
         res.writeHead(response.status,outgoing);

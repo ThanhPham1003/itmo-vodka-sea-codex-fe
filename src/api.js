@@ -1,4 +1,4 @@
-// Only GET /health is verified. This transport does not invent business DTOs or routes.
+// Same-origin transport for the backend contract at 1a3ee15.
 export class ApiError extends Error {
   constructor(message, status, requestId = null) {
     super(message); this.name = 'ApiError'; this.status = status; this.requestId = requestId;
@@ -17,7 +17,7 @@ export class ApiClient {
     this.#accessToken = token; this.#sessionVersion++; this.#notified = false;
   }
   clearSession() { this.#accessToken = null; this.#sessionVersion++; }
-  async request(path, { method = 'GET', body, headers = {}, signal } = {}) {
+  async request(path, { method = 'GET', body, headers = {}, signal, responseType = 'json', timeoutMs = this.timeoutMs, track = true } = {}) {
     let parsed;
     try {
       if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//') || path.includes('\\') || path.includes('#')) throw new Error();
@@ -26,21 +26,20 @@ export class ApiClient {
       parsed = new URL(path, 'https://folio.local');
       if (parsed.origin !== 'https://folio.local' || parsed.pathname !== '/backend/health' && !parsed.pathname.startsWith('/api/v1/')) throw new Error();
     } catch { throw new ApiError('Đường dẫn API không hợp lệ.', 400); }
-    const publicRequest = parsed.pathname === '/backend/health';
+    const publicRequest = ['/backend/health','/api/v1/auth/login','/api/v1/auth/signup'].includes(parsed.pathname);
     const requestHeaders = new Headers(headers);
-    requestHeaders.set('Accept', 'application/json');
+    requestHeaders.set('Accept', responseType === 'blob' ? 'application/pdf,image/jpeg,image/png,application/json' : 'application/json');
     requestHeaders.set('X-Request-ID', crypto.randomUUID());
     requestHeaders.delete('Authorization');
     if (!publicRequest && this.#accessToken) requestHeaders.set('Authorization', 'Bearer ' + this.#accessToken);
     const isJson = body !== undefined && body !== null && (Array.isArray(body) || Object.getPrototypeOf(body) === Object.prototype);
     if (isJson) { body = JSON.stringify(body); requestHeaders.set('Content-Type', 'application/json'); }
     else if (body instanceof FormData) requestHeaders.delete('Content-Type');
-    this.#pending++;
-    this.onRequestStateChange({pending:this.#pending,phase:'start',method,path:parsed.pathname});
+    if(track){this.#pending++;this.onRequestStateChange({pending:this.#pending,phase:'start',method,path:parsed.pathname});}
     try {
     const sessionVersion = this.#sessionVersion;
     let response, payload;
-    const abortSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(this.timeoutMs)]) : AbortSignal.timeout(this.timeoutMs);
+    const abortSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
     try {
       response = await this.fetchImpl.call(globalThis,parsed.pathname + parsed.search, { method, body, headers: requestHeaders, signal: abortSignal, cache:'no-store', credentials:'omit', redirect:'error' });
     } catch {
@@ -54,20 +53,30 @@ export class ApiClient {
       this.#accessToken = null; this.#notified = true;
       this.onUnauthenticated();
     }
+    if (!publicRequest && sessionVersion !== this.#sessionVersion) throw new ApiError('Phiên đã thay đổi. Bỏ qua phản hồi cũ.', 499, requestId);
+    if (response.ok && responseType === 'blob') {
+      const mime = response.headers.get('Content-Type')?.split(';')[0];
+      if (!['application/pdf','image/jpeg','image/png'].includes(mime)) throw new ApiError('Định dạng tệp backend không được hỗ trợ.', 502, requestId);
+      let data;
+      try { data = await response.blob(); }
+      catch { throw new ApiError(abortSignal.aborted?'Backend phản hồi quá thời gian chờ.':'Không thể tải nội dung tệp.',503,requestId); }
+      if (sessionVersion !== this.#sessionVersion) throw new ApiError('Phiên đã thay đổi. Bỏ qua tệp cũ.', 499, requestId);
+      return { data, requestId, status:response.status };
+    }
     try { payload = await response.json(); }
     catch {
       if (signal?.aborted) throw new ApiError('Yêu cầu đã được hủy.', 499, requestId);
       if (abortSignal.aborted) throw new ApiError('Backend phản hồi quá thời gian chờ.', 503, requestId);
       throw new ApiError('Backend không trả JSON đúng hợp đồng.', 502, requestId);
     }
+    if (!publicRequest && sessionVersion !== this.#sessionVersion) throw new ApiError('Phiên đã thay đổi. Bỏ qua phản hồi cũ.', 499, requestId);
     if (!payload || typeof payload !== 'object' || payload.code !== response.status || typeof payload.message !== 'string' || !Object.hasOwn(payload, 'data') || !response.ok && payload.data !== null) {
       throw new ApiError('Phản hồi backend không đúng hợp đồng.', 502, requestId);
     }
     if (!response.ok) throw new ApiError(payload.message || 'Dịch vụ chưa sẵn sàng.', response.status, requestId);
     return { data:payload.data, message:payload.message, requestId, status:response.status };
     } finally {
-      this.#pending--;
-      this.onRequestStateChange({pending:this.#pending,phase:'finish',method,path:parsed.pathname});
+      if(track){this.#pending--;this.onRequestStateChange({pending:this.#pending,phase:'finish',method,path:parsed.pathname});}
     }
   }
   async health() {
