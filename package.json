@@ -1,0 +1,11 @@
+{
+  "name": "folio-frontend-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prototype": "node prototype/server.mjs",
+    "dev": "node prototype/server.mjs",
+    "check": "node --check prototype/app.js && node --check prototype/model.js && node --check prototype/server.mjs"
+  }
+}
