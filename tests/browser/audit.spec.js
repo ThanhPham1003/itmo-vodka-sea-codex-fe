@@ -1,6 +1,27 @@
 import {test,expect} from '@playwright/test';
 import {mockBackend,signIn,openNav,fixtureUser,ids} from './backend-fixture.js';
 
+test('dossier audit events never display UUIDs, including responses without display names',async({page})=>{
+  const rows=['WARNING_ACKNOWLEDGED','DOSSIER_REJECT','DOSSIER_STATUS_CHANGED'].map((action,index)=>({
+    id:`event-${index}`,actor_id:ids.user,actor_name:'Fixture Admin',action,
+    resource:'dossier',resource_id:ids.dossier,dossier_id:ids.dossier,
+    ...(index===0?{resource_name:'Nhà số 3 cần cho thuê',dossier_title:'Nhà số 3 cần cho thuê'}:{}),
+    created_at:'2026-10-31T09:47:00Z'
+  }));
+  await mockBackend(page,{intercept:({call,reply})=>{
+    if(call.path==='/api/v1/audit-logs'){reply({items:rows,total:rows.length,limit:20,offset:0});return true;}
+    return false;
+  }});
+  await signIn(page);await openNav(page,'Nhật ký hoạt động');
+  const result=page.locator('#audit-results');await expect(result.locator('.audit-row')).toHaveCount(3);
+  await expect(result.locator('.audit-row').first().locator('strong')).toHaveText('Hồ sơ · Nhà số 3 cần cho thuê');
+  await expect(result.locator('.audit-row').nth(1).locator('strong')).toHaveText('Hồ sơ');
+  await expect(result.locator('.audit-row').nth(2).locator('small')).toHaveText('Fixture Admin');
+  expect(await result.innerText()).not.toMatch(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i);
+  await result.locator('.audit-row').nth(1).getByRole('button',{name:'Mở hồ sơ'}).click();
+  await expect(page).toHaveURL(new RegExp(ids.dossier));
+});
+
 test('audit displays actor names for non-admins, including historical and system events',async({page},info)=>{
   const other='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const user={...fixtureUser,role:'legal_specialist',permissions:['dossier:read','audit:read']};
@@ -14,7 +35,7 @@ test('audit displays actor names for non-admins, including historical and system
   await signIn(page);await openNav(page,'Nhật ký hoạt động');
   const result=page.locator('#audit-results');await expect(result.locator('.audit-row')).toHaveCount(4);
   await expect(result.locator('.audit-row').nth(0).locator('small')).toHaveText('Nguyễn Văn Bình');await expect(result.locator('.audit-row').nth(0)).not.toContainText(other);
-  await expect(result.locator('.audit-row').nth(1)).toContainText('company · Company supplied by API');await expect(result.locator('.audit-row').nth(2).locator('small')).toHaveText('Hệ thống');await expect(result.locator('.audit-row').nth(3).locator('small')).toHaveText('Thành viên không còn khả dụng');
+  await expect(result.locator('.audit-row').nth(1)).toContainText('Công ty · Company supplied by API');await expect(result.locator('.audit-row').nth(2).locator('small')).toHaveText('Hệ thống');await expect(result.locator('.audit-row').nth(3).locator('small')).toHaveText('Thành viên không còn khả dụng');
   await page.screenshot({path:`test-results/${info.project.name}-audit-usernames.png`,fullPage:false});
   await page.locator('[data-locale-picker]').first().selectOption('en');await expect(result.locator('.audit-row').nth(2).locator('small')).toHaveText('System');await expect(result.locator('.audit-row').nth(3).locator('small')).toHaveText('Unavailable member');await expect(result.locator('.audit-row').nth(0).locator('small')).toHaveText('Nguyễn Văn Bình');
   await page.locator('#audit-search').fill('Nguyễn Văn Bình');await expect(result.locator('.audit-row')).toHaveCount(1);expect(calls.some(c=>c.path==='/api/v1/auth/users')).toBe(false);

@@ -15,7 +15,7 @@ export async function mockBackend(page,{user=fixtureUser,intercept=()=>null}={})
     const reply=(data,status=200)=>route.fulfill({status,contentType:'application/json',headers:{'X-Request-ID':ids.user},body:JSON.stringify({code:status,message:status<400?'OK':'Request failed',data})});
     if(await intercept({route,call,reply,bundle}))return;
     const list=items=>({items,total:items.length,limit:Number(url.searchParams.get('limit')||20),offset:Number(url.searchParams.get('offset')||0)});
-    if(path==='/api/v1/auth/login')return reply({access_token:'fixture-token',token_type:'Bearer',expires_at:'2026-11-01T00:00:00Z',user});
+    if(path==='/api/v1/auth/login')return reply({access_token:'fixture-token',token_type:'Bearer',expires_at:new Date(Date.now()+3600000).toISOString(),user});
     if(path==='/api/v1/auth/signup')return reply(user,201);
     if(path==='/api/v1/auth/me')return reply(user);
     if(path==='/api/v1/auth/users')return reply(method==='POST'?user:list([user]),method==='POST'?201:200);

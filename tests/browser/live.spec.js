@@ -21,8 +21,8 @@ test('signup submits the nested company DTO and returns to sign in without assum
 });
 test('detail masks PII, explicitly reveals it and fetches protected original content',async({page})=>{
   const {calls}=await mockBackend(page);await signIn(page);await page.reload();
-  // A page reload intentionally clears the memory-only session.
-  await expect(page.getByRole('heading',{name:'Chào mừng trở lại'})).toBeVisible();await signIn(page);
+  await expect(page.locator('.sidebar')).toBeVisible();
+  expect(calls.filter(call=>call.path==='/api/v1/auth/login')).toHaveLength(1);
   await page.evaluate(id=>{location.hash='/detail/'+id+'?tab=documents';},ids.dossier);
   await expect(page.locator('.field-value')).toContainText('••••••');await expect(page.locator('#app')).not.toContainText('Private API value');
   await page.getByRole('button',{name:'Hiện Sensitive name'}).click();await expect(page.locator('.field-value')).toContainText('Private API value');

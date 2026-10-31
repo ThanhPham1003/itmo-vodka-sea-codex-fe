@@ -17,7 +17,7 @@ npm run dev
 
 Mở **http://127.0.0.1:5173**. Có thể đổi cổng bằng `PORT=4173 npm run dev`.
 
-Trang mặc định là **đăng nhập**; `#/signup` mở đăng ký doanh nghiệp và admin đầu tiên. Server cũng redirect `/login` và `/signup` về hash route tương ứng để link trực tiếp hoạt động. Đăng ký xong đăng nhập bằng tài khoản vừa tạo. Mật khẩu mới tối thiểu 12 ký tự, tối đa 72 byte. Bearer token chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Đăng xuất xóa token và dữ liệu phiên trong frontend; backend chưa có API thu hồi token.
+Trang mặc định là **đăng nhập**; `#/signup` mở đăng ký doanh nghiệp và admin đầu tiên. Server cũng redirect `/login` và `/signup` về hash route tương ứng để link trực tiếp hoạt động. Đăng ký xong đăng nhập bằng tài khoản vừa tạo. Mật khẩu mới tối thiểu 12 ký tự, tối đa 72 byte. Bearer token được giữ trong bộ nhớ và lưu kèm thời hạn trong `sessionStorage` của tab; tải lại trang khôi phục phiên rồi xác minh với `/auth/me`. Đăng xuất xóa token và dữ liệu phiên trong frontend; backend chưa có API thu hồi token.
 
 Chọn **Dùng bản demo** hoặc mở `/?mode=demo` để dùng màn hình mẫu. Demo không upload hoặc gọi OCR/AI và không tự thay thế dữ liệu khi API thật lỗi.
 
@@ -29,7 +29,7 @@ BACKEND_ORIGIN=http://127.0.0.1:8080 npm run dev
 
 Frontend proxy `/backend/health` tới `/health` của Go và chuyển tiếp `/api/v1/*` nguyên method/query/body/status tới backend, tránh cần CORS cho local. Proxy hỗ trợ JSON, multipart và stream file, giữ request ID và chỉ chuyển tiếp các header cần thiết. Route chưa có ở backend vẫn trả lỗi thật; không được thay bằng dữ liệu mẫu. `BACKEND_ORIGIN` là cấu hình server; không nhập credential hoặc PASETO key vào frontend. Dev server không tự đọc `.env`.
 
-`src/api.js` cung cấp transport JSON/FormData/nội dung file, timeout, request ID, kiểm tra envelope và xử lý 401/403. `src/backend-service.js` ánh xạ DTO Go sang view, lọc/phân trang trên server, giữ version và loại bỏ phản hồi của phiên đã kết thúc. Thao tác có version nhận 409 sẽ tải lại hồ sơ và yêu cầu người dùng mở lại biểu mẫu để kiểm tra trước khi gửi; không tự retry mutation.
+`src/api.js` cung cấp transport JSON/FormData/nội dung file, timeout, request ID, kiểm tra envelope và xử lý 401/403. Phiên đăng nhập được lưu trong `sessionStorage` của tab để giữ đăng nhập khi F5; khởi động lại luôn xác minh `/auth/me` trước khi mở workspace. `src/backend-service.js` ánh xạ DTO Go sang view, lọc/phân trang trên server, giữ version và loại bỏ phản hồi của phiên đã kết thúc. Thao tác có version nhận 409 sẽ tải lại hồ sơ và yêu cầu người dùng mở lại biểu mẫu để kiểm tra trước khi gửi; không tự retry mutation.
 
 Chi tiết tự poll mỗi 3 giây khi còn tệp chờ/xử lý, tạm dừng khi có modal hoặc tab bị ẩn. File gốc chỉ tải qua Bearer request khi người dùng mở; URL blob được thu hồi khi đổi tài liệu, rời trang hoặc đăng xuất. Giá trị PII vẫn che mặc định; reveal gọi API và ghi audit. OCR/AI cần worker và provider được cấu hình trong backend; lỗi phụ thuộc được hiển thị từ máy chủ.
 
@@ -93,6 +93,6 @@ Xem [đối chiếu backend và kế hoạch tích hợp](docs/BACKEND_INTEGRATI
 
 ## Trợ lý DocSense
 
-Widget hướng dẫn nằm trong workspace sau đăng nhập. Bản live gọi `/api/v1/assistant/context`, `/articles/:id`, `/chat` bằng PASETO trong bộ nhớ; key/model OpenAI chỉ đặt ở backend. Khi AI tắt, vẫn đọc được thư viện bài hướng dẫn. Bản demo dùng FAQ local có nhãn mẫu và không gọi AI. Chat không truy vấn hay thao tác hồ sơ thật; không nhập dữ liệu cá nhân/nội dung giấy tờ.
+Widget hướng dẫn nằm trong workspace sau đăng nhập. Bản live gọi `/api/v1/assistant/context`, `/articles/:id`, `/chat` bằng PASETO của phiên đăng nhập; key/model OpenAI chỉ đặt ở backend. Khi AI tắt, vẫn đọc được thư viện bài hướng dẫn. Bản demo dùng FAQ local có nhãn mẫu và không gọi AI. Chat không truy vấn hay thao tác hồ sơ thật; không nhập dữ liệu cá nhân/nội dung giấy tờ.
 
 Module mới: `src/assistant.js` (DOM widget), `assistant-state.js` (history/abort/session), `assistant-demo.js` (FAQ mẫu), `assistant.css`. Chat timeout 70s; Node proxy cho riêng endpoint chat tối thiểu 65s để phù hợp BE deadline tối đa 60s; các API khác giữ nguyên. Không lưu hội thoại vào localStorage. Chạy `npm test` và `npm run test:e2e -- tests/browser/assistant.spec.js` để kiểm thử.

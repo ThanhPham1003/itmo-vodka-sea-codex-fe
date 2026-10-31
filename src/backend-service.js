@@ -1,6 +1,7 @@
 import { ApiError } from './api.js';
 import { reconciliationIssues } from './reconciliation-view.js';
 import { approvalReadiness } from './review-readiness.js';
+import { resourceLabels } from './display-labels.js';
 
 const array = value => Array.isArray(value) ? value : [];
 const key = value => encodeURIComponent(value);
@@ -18,10 +19,10 @@ export function auditView(row,me,members=[]) {
   };
   const isSystem=row.actor_id==='00000000-0000-0000-0000-000000000000';
   const actorName=isSystem?'':row.actor_name?.trim()||knownName(row.actor_id);
-  let target=row.resource_id;
+  let target=row.resource_name||'';
   if(row.resource==='user')target=(row.resource_id===row.actor_id?actorName:'')||knownName(row.resource_id)||target;
   if(row.resource==='company'&&row.resource_id===(me?.companyId||me?.company_id))target=me?.company?.name||target;
-  return {...row,description:row.resource+' · '+target,actor:actorName,actorIsSystem:isSystem,reference:row.dossier_id,at:row.created_at,dossierId:row.dossier_id};
+  return {...row,description:[resourceLabels[row.resource]||'Hoạt động',target].filter(Boolean).join(' · '),actor:actorName,actorIsSystem:isSystem,reference:row.dossier_title||'',at:row.created_at,dossierId:row.dossier_id};
 }
 
 // For the access editor only. Authorization always uses /auth/me permissions.
@@ -36,6 +37,7 @@ export const roleDefaults = {
 export function catalogView(item, kind) {
   const def = item.definition || {};
   return { ...def, code:item.code, version:item.current_version, active:item.active,
+    documentSchemas:array(item.document_schemas),
     fields:array(def.fields), specialRequirements:array(def.special_requirements),
     documents:array(def.documents).map(doc=>({...doc,code:doc.document_type,triggerReason:doc.trigger_reason})),
     rules:array(def.rules).map(rule=>({...rule,id:rule.code,leftType:rule.left.document_type,leftField:rule.left.field_key,rightType:rule.right.document_type,rightField:rule.right.field_key})), kind };
@@ -51,7 +53,8 @@ export function dossierView(bundle) {
   const groups = array(bundle.document_groups);
   const fields = array(bundle.fields);
   const batches = [...new Set(files.map(file=>file.batch_id))];
-  return { ...d, name:d.title, reference:d.id, typeCode:d.dossier_type, typeName:configuration.definition?.name || d.dossier_type,
+  return { ...d, name:d.title, reference:'', typeCode:d.dossier_type, typeName:configuration.definition?.name || 'Loại hồ sơ không còn khả dụng',
+    assigneeName:d.assignee_name||'',creatorName:d.creator_name||'',
     assigneeId:d.assignee_id, createdBy:d.creator_id, createdAt:d.created_at, configVersion:d.dossier_type_version,
     files:files.map(file=>{
       // Groups reference derived PDFs; extracted fields retain the original file
@@ -59,16 +62,16 @@ export function dossierView(bundle) {
       const fileGroups=groups.filter(group=>group.file_id===file.id || !file.source_file_id&&fileById.get(group.file_id)?.source_file_id===file.id);
       const groupIds=new Set(fileGroups.map(group=>group.id));
       return {...file,name:file.original_name,typeCode:file.document_type,
-        typeName:schemas.find(doc=>doc.code===file.document_type)?.definition?.name || (fileGroups.length>1?'Nhiều nhóm tài liệu':file.document_type),
+        typeName:schemas.find(doc=>doc.code===file.document_type)?.definition?.name || (fileGroups.length>1?'Nhiều nhóm tài liệu':'Chưa phân loại'),
         batch:batches.indexOf(file.batch_id)+1,sourceFileId:file.source_file_id,sourcePages:array(file.source_pages),error:file.error_message,
         fields:fields.filter(field=>field.file_id===file.id || file.source_file_id===field.file_id&&groupIds.has(field.document_group_id)).map(field=>({...field,
           schemaKey:field.key,key:field.id,source:{page:field.page,excerpt:field.raw_text,boundingBox:field.bounding_box}})),
-        groups:fileGroups};
+        groups:fileGroups.map(group=>({...group,typeName:schemas.find(doc=>doc.code===group.document_type)?.definition?.name||'Chưa phân loại'}))};
     }),
     checklist:array(bundle.checklist).map(req=>({...req,code:req.document_type,triggerReason:req.reason})),
-    invalidRequiredFields:fields.filter(field=>field.required&&(!field.value||field.validation!=='VALID')).map(field=>({id:field.id,label:field.label||'Trường bắt buộc',fileId:field.file_id})),
+    invalidRequiredFields:fields.filter(field=>field.required&&(!field.value?.trim()||field.validation!=='VALID')).map(field=>({id:field.id,label:field.label||'Trường bắt buộc',fileId:field.file_id})),
     issues:reconciliationIssues(bundle.issues,{configuration,files:allFiles,groups,fields}),
-    history:array(bundle.decisions).map(decision=>({action:decision.action,description:decision.reason,actor:decision.actor_id,at:decision.created_at})),
+    history:array(bundle.decisions).map(decision=>({action:decision.action,description:decision.reason,actor:decision.actor_name||'Thành viên không còn khả dụng',at:decision.created_at})),
     decisions:array(bundle.decisions) };
 }
 
@@ -133,7 +136,7 @@ export function createBackendService(client) {
       const result=await data('/auth/login',{method:'POST',body:{username_or_email:identifier.trim(),password}});
       if (version!==epoch) throw new ApiError('Yêu cầu đăng nhập đã hết hiệu lực.',499);
       if (!result?.access_token || result.token_type!=='Bearer' || !result.user?.id) throw new ApiError('Phản hồi đăng nhập không hợp lệ.',502);
-      client.setAccessToken(result.access_token);
+      client.setAccessToken(result.access_token,result.expires_at);
       try {
         const me=await data('/auth/me');
         if (version!==epoch) throw new ApiError('Phiên đăng nhập đã thay đổi.',499);
@@ -142,6 +145,20 @@ export function createBackendService(client) {
       return actor;
     },
     signup(input) { return data('/auth/signup',{method:'POST',body:input}); },
+    async restoreSession() {
+      const version=++epoch;
+      if(!client.restoreAccessToken())return false;
+      try {
+        const me=await data('/auth/me');
+        if(version!==epoch)throw new ApiError('Phiên đăng nhập đã thay đổi.',499);
+        if(!me?.id)throw new ApiError('Phản hồi đăng nhập không hợp lệ.',502);
+        actor=userView(me);cache=freshCache();return true;
+      }catch(error){
+        if(error.status===401){if(version===epoch)service.logout();return false;}
+        // A network failure must not erase a still-valid saved credential.
+        throw error;
+      }
+    },
     logout() { epoch++;actor=null;cache=freshCache();client.clearSession(); },
     async load(view,{signal,background=false,accept=()=>true}={}) {
       const version=epoch, options={signal,track:!background}, next={...cache};
@@ -261,6 +278,14 @@ export function createBackendService(client) {
     archiveCatalog:(kind,code)=>data(`/${kind==='documents'?'document-types':'dossier-types'}/${key(code)}`,{method:'DELETE'}),
     suggestDocumentFields:description=>data('/document-types/suggestions',{method:'POST',body:{description},timeoutMs:125000}),
     suggestComparisonRules:(code,description)=>data(`/dossier-types/${key(code)}/comparison-rules/suggestions`,{method:'POST',body:{description},timeoutMs:125000}),
+    suggestDraftComparisonRules(description,input) {
+      const documents=input.documents.map((doc,position)=>({
+        document_type:doc.code,key:'',schema_version:doc.schema_version||cache.documents.find(item=>item.code===doc.code)?.version||0,
+        position,required:doc.required,conditional:doc.conditional,min_count:doc.min_count||1,role:doc.role||'',
+        trigger_reason:doc.triggerReason,condition:doc.conditional?doc.condition:undefined
+      }));
+      return data('/dossier-types/comparison-rules/suggestions',{method:'POST',body:{description,definition:{name:input.name,description:input.description,documents,rules:[]}},timeoutMs:125000});
+    },
     suggestCatalog(kind,description,code) {
       if(kind==='documents')return service.suggestDocumentFields(description);
       if(code)return service.suggestComparisonRules(code,description);

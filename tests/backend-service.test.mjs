@@ -15,11 +15,11 @@ const response=(data,status=200)=>new Response(JSON.stringify({code:status,messa
 test('audit uses server actor names and resolves legacy self events without displaying UUIDs',()=>{
   const other='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const row={actor_id:other,actor_name:'Nguyễn Văn Bình',resource:'user',resource_id:other,action:'LOGIN'};
-  const view=auditView(row,actor);assert.equal(view.actor,'Nguyễn Văn Bình');assert.equal(view.description,'user · Nguyễn Văn Bình');assert.equal(view.actor_id,other);
-  const self=auditView({...row,actor_id:uid,actor_name:undefined,resource_id:uid},actor);assert.equal(self.actor,'Test Admin');assert.equal(self.description,'user · Test Admin');
+  const view=auditView(row,actor);assert.equal(view.actor,'Nguyễn Văn Bình');assert.equal(view.description,'Thành viên · Nguyễn Văn Bình');assert.equal(view.actor_id,other);
+  const self=auditView({...row,actor_id:uid,actor_name:undefined,resource_id:uid},actor);assert.equal(self.actor,'Test Admin');assert.equal(self.description,'Thành viên · Test Admin');
   const missing=auditView({...row,actor_name:''},actor);assert.equal(missing.actor,'');assert.equal(missing.actorIsSystem,false);
   const system=auditView({...row,actor_id:'00000000-0000-0000-0000-000000000000',actor_name:''},actor);assert.equal(system.actorIsSystem,true);assert.equal(system.actor,'');
-  const company=auditView({...row,resource:'company',resource_id:did},actor);assert.equal(company.description,'company · Test Company');
+  const company=auditView({...row,resource:'company',resource_id:did},actor);assert.equal(company.description,'Công ty · Test Company');
 });
 function setup(handler=()=>response(null),catalogs={}) {
   const calls=[];
@@ -145,7 +145,7 @@ test('approval conflicts at the same revision explain invalid required fields wi
   await service.login('admin','long-password');await service.load({page:'detail',id:did});
   await assert.rejects(service.review(did,'APPROVE','Checked'),error=>{
     assert.equal(error.status,409);assert.equal(error.reloadRequired,true);
-    assert.match(error.message,/trường bắt buộc/);assert.doesNotMatch(error.message,/đã thay đổi/i);return true;
+    assert.match(error.message,/thông tin bắt buộc/);assert.doesNotMatch(error.message,/đã thay đổi/i);return true;
   });
   assert.equal(decisions,1);assert.equal(service.getDossier(did).version,14);
   assert.deepEqual(service.getDossier(did).invalidRequiredFields.map(field=>field.label),['Signing date']);
@@ -202,4 +202,22 @@ test('each AI action posts its description to the corresponding suggestion endpo
     ['/api/v1/document-types/suggestions','POST',{description:'Identity fields'}],
     ['/api/v1/dossier-types/sale/comparison-rules/suggestions','POST',{description:'Compare owner names'}]
   ]);
+});
+
+
+test('unsaved dossier rule suggestions serialize selected versions and repeated roles without saving',async()=>{
+  const {service,calls}=setup(()=>response({draft:true,rules:[]}));await service.login('admin','long-password');
+  await service.suggestDraftComparisonRules('Compare names',{name:'Draft',description:'Current description',documents:[
+    {code:'identity',schema_version:3,role:'buyer',required:true,min_count:2},
+    {code:'identity',schema_version:3,role:'seller',required:false,conditional:true,triggerReason:'Seller present',min_count:1}
+  ]});
+  assert.equal(calls.at(-1).path,'/api/v1/dossier-types/comparison-rules/suggestions');
+  const body=JSON.parse(calls.at(-1).init.body);
+  assert.equal(body.description,'Compare names');assert.equal(body.definition.name,'Draft');
+  assert.deepEqual(body.definition.rules,[]);
+  assert.deepEqual(body.definition.documents.map(doc=>[doc.document_type,doc.schema_version,doc.role,doc.position,doc.min_count]),[
+    ['identity',3,'buyer',0,2],['identity',3,'seller',1,1]
+  ]);
+  assert.equal(body.definition.documents[1].trigger_reason,'Seller present');
+  assert.equal(calls.some(call=>call.path==='/api/v1/dossier-types'&&call.init.method==='POST'),false);
 });

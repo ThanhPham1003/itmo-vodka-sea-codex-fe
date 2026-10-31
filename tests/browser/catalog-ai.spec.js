@@ -116,20 +116,59 @@ test('rule roles must match the edited document roles before saving',async({page
 });
 
 
-test('new dossier form generates configuration without saving first',async({page})=>{
+test('new dossier generates configuration then rules using edited draft roles before a single save',async({page},info)=>{
   const {calls}=await mockBackend(page,{intercept:({call,reply})=>{
-    if(call.path==='/api/v1/dossier-types/suggestions'){reply({draft:true,definition:{name:'Suggested',description:'Suggested description',documents:[{document_type:'identity',required:true,min_count:1}],rules:[]}});return true;}return false;
+    if(call.path==='/api/v1/dossier-types/suggestions'){reply({draft:true,definition:{name:'Suggested',description:'Suggested description',documents:[{document_type:'identity',schema_version:1,role:'initial',required:true,min_count:1}],rules:[]}});return true;}
+    if(call.path==='/api/v1/dossier-types/comparison-rules/suggestions'){
+      reply({draft:true,rules:[{code:'',name:'Đối chiếu tên từ bản nháp',left:{document_type:'identity',field_key:'full-name',role:'bên mua'},right:{document_type:'identity',field_key:'full-name',role:'bên bán'},operator:'TEXT_EQUALS',severity:'WARNING'}]});return true;
+    }
+    if(call.path==='/api/v1/dossier-types'&&call.method==='POST'){reply({code:'new-type',current_version:1,active:true,definition:JSON.parse(call.body)},201);return true;}
+    return false;
   }});
   await signIn(page);await openNav(page,'Cấu hình hồ sơ');
-  await expect(page.getByRole('button',{name:/Gợi ý.*AI/})).toHaveCount(0);
   await page.getByRole('button',{name:'Thêm loại bộ hồ sơ',exact:true}).click();
   const dialog=page.getByRole('dialog');
   await dialog.getByLabel('Tên hiển thị').fill('Hồ sơ mới');await dialog.getByLabel('Mô tả nghiệp vụ').fill('Cần CCCD');
-  await expect(dialog.getByRole('button',{name:'Gợi ý quy tắc bằng AI',exact:true})).toBeDisabled();
+  const suggest=dialog.getByRole('button',{name:'Gợi ý quy tắc bằng AI',exact:true});
+  await expect(suggest).toBeEnabled();await suggest.click();
+  await expect(dialog.locator('#catalog-ai-error')).toContainText('Chọn ít nhất một loại giấy tờ');
   await dialog.getByRole('button',{name:'Gợi ý cấu hình bằng AI',exact:true}).click();
   await expect(dialog.locator('input[name="documents"][value="identity"]')).toBeChecked();
   await expect(dialog.getByLabel('Tên hiển thị')).toHaveValue('Hồ sơ mới');
-  expect(JSON.parse(calls.find(call=>call.path==='/api/v1/dossier-types/suggestions').body)).toEqual({description:'Hồ sơ mới\nCần CCCD'});
+  await dialog.getByLabel('Vai trò chủ thể (phân cách bằng dấu phẩy)',{exact:true}).fill('bên mua, bên bán');
+  await dialog.getByLabel('Số lượng tối thiểu',{exact:true}).fill('2');
+  await dialog.getByRole('button',{name:'Thêm quy tắc',exact:true}).click();
+  await dialog.getByLabel('Tên quy tắc',{exact:true}).fill('Quy tắc thủ công');
+  await suggest.click();
+  await expect(dialog.locator('#catalog-ai-result')).toContainText('Đã thêm gợi ý quy tắc');
+  await expect(dialog.getByLabel('Tên quy tắc',{exact:true}).nth(0)).toHaveValue('Quy tắc thủ công');await expect(dialog.getByLabel('Tên quy tắc',{exact:true}).nth(1)).toHaveValue('Đối chiếu tên từ bản nháp');
+  const aiCall=calls.find(call=>call.path==='/api/v1/dossier-types/comparison-rules/suggestions');
+  const input=JSON.parse(aiCall.body);
+  expect(input.description).toBe('Hồ sơ mới\nCần CCCD');
+  expect(input.definition.name).toBe('Hồ sơ mới');expect(input.definition.rules).toEqual([]);
+  expect(input.definition.documents.map(doc=>[doc.document_type,doc.schema_version,doc.role,doc.min_count])).toEqual([['identity',1,'bên mua',2],['identity',1,'bên bán',2]]);
+  expect(calls.filter(call=>call.path==='/api/v1/dossier-types'&&call.method==='POST')).toHaveLength(0);
+  await page.screenshot({path:`test-results/${info.project.name}-draft-rule-suggestions.png`,fullPage:true});
+  await dialog.getByRole('button',{name:'Lưu phiên bản',exact:true}).click();await expect(dialog).toHaveCount(0);
+  const saves=calls.filter(call=>call.path==='/api/v1/dossier-types'&&call.method==='POST');expect(saves).toHaveLength(1);
+  const saved=JSON.parse(saves[0].body);expect(saved.expected_version).toBe(0);expect(saved.rules).toHaveLength(2);
+  expect(saved.rules[1].left.role).toBe('bên mua');expect(saved.rules[1].right.role).toBe('bên bán');
+});
+
+test('failed draft rule suggestions preserve manual rules and all edited inputs',async({page})=>{
+  const {calls}=await mockBackend(page,{intercept:({call,reply})=>{if(call.path==='/api/v1/dossier-types/comparison-rules/suggestions'){reply(null,503);return true;}return false;}});
+  await signIn(page);await openNav(page,'Cấu hình hồ sơ');await page.getByRole('button',{name:'Thêm loại bộ hồ sơ',exact:true}).click();
+  const dialog=page.getByRole('dialog');await dialog.getByLabel('Tên hiển thị').fill('Giữ nháp');
+  await dialog.locator('input[name="documents"][value="identity"]').check();
+  await dialog.getByLabel('Vai trò chủ thể (phân cách bằng dấu phẩy)',{exact:true}).fill('bên mua');
+  await dialog.getByRole('button',{name:'Thêm quy tắc',exact:true}).click();await dialog.getByLabel('Tên quy tắc',{exact:true}).fill('Giữ quy tắc');
+  await dialog.getByRole('button',{name:'Gợi ý quy tắc bằng AI',exact:true}).click();
+  await expect(dialog.locator('#catalog-ai-error')).toContainText('Request failed');
+  await expect(dialog.getByLabel('Tên quy tắc',{exact:true})).toHaveValue('Giữ quy tắc');
+  await expect(dialog.getByLabel('Tên hiển thị')).toHaveValue('Giữ nháp');
+  await expect(dialog.getByLabel('Vai trò chủ thể (phân cách bằng dấu phẩy)',{exact:true})).toHaveValue('bên mua');
+  await expect(dialog.getByRole('button',{name:'Gợi ý quy tắc bằng AI',exact:true})).toBeEnabled();
+  await expect(dialog.getByRole('button',{name:'Lưu phiên bản',exact:true})).toBeEnabled();
   expect(calls.filter(call=>call.path==='/api/v1/dossier-types'&&call.method==='POST')).toHaveLength(0);
 });
 

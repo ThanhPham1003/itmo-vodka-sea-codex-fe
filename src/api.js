@@ -1,4 +1,5 @@
 // Same-origin transport for the backend contract at 1a3ee15.
+import { browserSessionCache } from './session-cache.js';
 export class ApiError extends Error {
   constructor(message, status, requestId = null) {
     super(message); this.name = 'ApiError'; this.status = status; this.requestId = requestId;
@@ -9,14 +10,22 @@ export class ApiClient {
   #sessionVersion = 0;
   #notified = false;
   #pending = 0;
-  constructor({ fetchImpl = globalThis.fetch, timeoutMs = 10000, onUnauthenticated = () => {}, onRequestStateChange = () => {} } = {}) {
+  constructor({ fetchImpl = globalThis.fetch, timeoutMs = 10000, onUnauthenticated = () => {}, onRequestStateChange = () => {}, sessionCache = null } = {}) {
     this.fetchImpl = fetchImpl; this.timeoutMs = timeoutMs; this.onUnauthenticated = onUnauthenticated; this.onRequestStateChange=onRequestStateChange;
+    this.sessionCache=sessionCache;
   }
-  setAccessToken(token) {
+  setAccessToken(token,expiresAt) {
     if (typeof token !== 'string' || !token || /\s/.test(token)) throw new ApiError('Token không hợp lệ.', 400);
     this.#accessToken = token; this.#sessionVersion++; this.#notified = false;
+    this.sessionCache?.write(token,expiresAt);
   }
-  clearSession() { this.#accessToken = null; this.#sessionVersion++; }
+  restoreAccessToken() {
+    const saved=this.sessionCache?.read();
+    if(!saved)return false;
+    this.#accessToken=saved.accessToken;this.#sessionVersion++;this.#notified=false;
+    return true;
+  }
+  clearSession() { this.#accessToken = null; this.#sessionVersion++; this.sessionCache?.clear(); }
   get sessionVersion() { return this.#sessionVersion; }
   async request(path, { method = 'GET', body, headers = {}, signal, responseType = 'json', timeoutMs = this.timeoutMs, track = true } = {}) {
     let parsed;
@@ -52,6 +61,7 @@ export class ApiClient {
     // an upstream reverse proxy returned HTML instead of the expected JSON.
     if (response.status === 401 && !publicRequest && sessionVersion === this.#sessionVersion && !this.#notified) {
       this.#accessToken = null; this.#notified = true;
+      this.sessionCache?.clear();
       this.onUnauthenticated();
     }
     if (!publicRequest && sessionVersion !== this.#sessionVersion) throw new ApiError('Phiên đã thay đổi. Bỏ qua phản hồi cũ.', 499, requestId);
@@ -86,7 +96,7 @@ export class ApiClient {
     return { code:200, message:result.message, data:result.data, requestId:result.requestId, checkedAt:new Date().toISOString() };
   }
 }
-export const apiClient = new ApiClient({ onUnauthenticated: () => {
+export const apiClient = new ApiClient({ sessionCache:browserSessionCache(), onUnauthenticated: () => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('folio:unauthenticated'));
 }, onRequestStateChange: detail => {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('docsense:request-state',{detail}));

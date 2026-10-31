@@ -84,7 +84,7 @@ test('AI suggestion routes have a longer proxy deadline than ordinary API reques
   const upstream=createServer((req,res)=>{setTimeout(()=>{res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({code:200,message:'Draft',data:{draft:true}}));},80);});
   const backend=await listen(upstream),server=createAppServer({backend,proxyTimeoutMs:10,aiTimeoutMs:1000}),base=await listen(server);
   try {
-    for(const path of ['/api/v1/document-types/suggestions','/api/v1/dossier-types/sale/comparison-rules/suggestions']) {
+    for(const path of ['/api/v1/document-types/suggestions','/api/v1/dossier-types/sale/comparison-rules/suggestions','/api/v1/dossier-types/comparison-rules/suggestions']) {
       const response=await fetch(base+path,{method:'POST',body:'{"description":"test"}',headers:{'Content-Type':'application/json'}});
       assert.equal(response.status,200);assert.equal((await response.json()).data.draft,true);
     }

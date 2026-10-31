@@ -17,7 +17,7 @@ Nguồn chuẩn: `internal/{auth,dossier,audit}/routes/v1/routes.go`, DTO/models
 | Giao diện | API `/api/v1` | Hành vi |
 | --- | --- | --- |
 | Đăng ký | `POST /auth/signup` | Company lồng trong body; tạo admin đầu tiên, sau đó đăng nhập riêng |
-| Đăng nhập/phiên | `POST /auth/login`, `GET /auth/me` | Token trong bộ nhớ; tenant, quyền và tên công ty từ API |
+| Đăng nhập/phiên | `POST /auth/login`, `GET /auth/me` | Token trong bộ nhớ và sessionStorage của tab; khôi phục qua /auth/me, tenant/quyền/tên công ty từ API |
 | Thành viên | `GET/POST /auth/users`, `PATCH /auth/users/{id}/access` | Admin công ty; username/mật khẩu ban đầu; role, active và quyền bổ sung |
 | Loại giấy tờ | `GET/POST /document-types`, `PUT/DELETE /document-types/{code}` | Schema trường, yêu cầu đặc biệt, version và archive |
 | Loại hồ sơ | `GET/POST /dossier-types`, `PUT/DELETE /dossier-types/{code}` | Checklist, min_count, vai trò chủ thể, rule references và version |
@@ -37,6 +37,7 @@ Nguồn chuẩn: `internal/{auth,dossier,audit}/routes/v1/routes.go`, DTO/models
 
 ## Ranh giới dữ liệu và quyền
 
+- `src/session-cache.js` lưu duy nhất access token và `expires_at` từ backend trong `sessionStorage` (`docsense:session:v1`). F5 giữ phiên và URL/tab đang mở, nhưng tenant/quyền/dữ liệu luôn tải lại qua `/auth/me` rồi API trang. Cache hết hạn, hỏng, logout hoặc 401 bị xóa. Lỗi mạng khi khôi phục giữ cache và có nút thử lại. Không lưu mật khẩu, quyền, hồ sơ, PII đã reveal hay hội thoại. Đóng tab kết thúc phiên lưu trong tab theo cơ chế trình duyệt; không phải “ghi nhớ đăng nhập” lâu dài. Nếu browser chặn storage, đăng nhập trong bộ nhớ vẫn hoạt động.
 - `src/api.js` chịu trách nhiệm transport, envelope `{code,message,data}`, request ID, timeout và phiên. Auth công khai không gửi token. 401 ở route được bảo vệ xóa phiên; 403 giữ phiên và trả lỗi. Không tự retry mutation.
 - `src/backend-service.js` ánh xạ snake_case DTO và lưu dữ liệu của trang hiện tại. Load bị hủy hoặc phản hồi sau logout không được cập nhật view. Không fallback sang demo khi lỗi API.
 - Tenant lấy từ `/auth/me`, không có company selector trong luồng thật. API thành viên chỉ gọi cho `company_admin`; quyền backend là `user:manage`. Màn hình phân công của manager dùng ID người phụ trách vì backend chưa có directory thành viên dành cho manager.

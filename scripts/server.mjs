@@ -35,7 +35,7 @@ export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPat
         for (const name of allow) if (req.headers[name]) headers.set(name,req.headers[name]);
         headers.set('Accept-Encoding','identity');
         const hasBody = !['GET','HEAD'].includes(req.method);
-        const aiSuggestion=req.method==='POST'&&/^\/api\/v1\/(?:document-types\/suggestions|dossier-types\/suggestions|dossier-types\/[^/]+\/comparison-rules\/suggestions)$/.test(url.pathname);
+        const aiSuggestion=req.method==='POST'&&/^\/api\/v1\/(?:document-types\/suggestions|dossier-types\/suggestions|dossier-types\/(?:[^/]+\/)?comparison-rules\/suggestions)$/.test(url.pathname);
         const response = await fetch(new URL(health ? '/health' : url.pathname + url.search, upstream), {
           method:req.method, headers, signal:AbortSignal.any([controller.signal,AbortSignal.timeout(health ? Math.min(proxyTimeoutMs,5000) : aiSuggestion ? aiTimeoutMs : url.pathname === '/api/v1/assistant/chat' ? Math.max(proxyTimeoutMs,65000) : proxyTimeoutMs)]),
           redirect:'manual', ...(hasBody ? {body:req,duplex:'half'} : {})

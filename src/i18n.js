@@ -1,6 +1,9 @@
 // Vietnamese is the source language. Keep translations at the presentation edge;
 // API enum values, form values, user content and document evidence stay untouched.
 const english = new Map(`
+Không thể khôi phục phiên đăng nhập|Unable to restore your session
+Đang khôi phục phiên đăng nhập…|Restoring your session…
+Đăng nhập lại|Sign in again
 Tổng quan|Overview
 Hồ sơ|Dossiers
 Kiểm duyệt|Review
@@ -11,6 +14,17 @@ Hệ thống|System
 Thành viên không còn khả dụng|Unavailable member
 Kết nối backend|Backend connection
 Chi tiết hồ sơ|Dossier details
+CHI TIẾT HỒ SƠ|DOSSIER DETAILS
+Loại hồ sơ không còn khả dụng|Unavailable dossier type
+Loại giấy tờ không còn khả dụng|Unavailable document type
+Trường dữ liệu không còn khả dụng|Unavailable field
+Chưa xác định|Unspecified
+Yêu cầu trợ lý|Assistant request
+Phân công bằng mã định danh|Assign by identifier
+Nhập mã người phụ trách mới|Enter the new assignee's identifier
+Lọc nâng cao bằng mã định danh|Advanced identifier filters
+Lọc người phụ trách bằng mã định danh|Filter assignee by identifier
+Nhập mã người phụ trách|Enter the assignee's identifier
 KHÔNG GIAN LÀM VIỆC|WORKSPACE
 QUẢN LÝ|MANAGEMENT
 Không gian doanh nghiệp|Company workspace
@@ -171,6 +185,14 @@ Kiểm tra yêu cầu đặc biệt|Check special requirements
 Kiểm tra đối soát|Reconciliation check
 Tài liệu nguồn|Source document
 Cần bổ sung hoặc sửa các trường bắt buộc chưa hợp lệ trong tab Tài liệu.|Complete or correct the invalid required fields in the Documents tab.
+Cần kiểm tra và xác nhận các thông tin bắt buộc còn cảnh báo, hoặc sửa lại dữ liệu trong tab Tài liệu.|Check and accept the outstanding required-information warnings, or correct the information in the Documents tab.
+Các thông tin đã được người kiểm tra xác nhận chấp nhận. Bạn có thể phê duyệt hồ sơ.|The reviewer has accepted the information. You can approve the dossier.
+Chấp nhận kết quả kiểm tra của mục này sau khi đã đối chiếu giấy tờ gốc.|Accept the check result for this item after comparing it with the original documents.
+Kiểm tra giấy tờ gốc rồi xác nhận chấp nhận từng cảnh báo kèm lý do, hoặc sửa lại thông tin chưa đúng.|Check the original documents, then accept each warning with a reason or correct the information.
+Chưa thể phê duyệt hồ sơ|The dossier cannot be approved yet
+Xác nhận cảnh báo chỉ ghi nhận việc đã kiểm tra; thông tin bắt buộc vẫn cần được bổ sung hoặc sửa đúng.|Acknowledging a warning records that it was checked; required information still needs to be completed or corrected.
+Chọn thông tin bên trên để mở đúng tài liệu cần kiểm tra.|Select an item above to open the document that needs checking.
+Không tìm thấy thông tin cần sửa. Hãy tải lại hồ sơ.|The information to correct could not be found. Reload the dossier.
 Cần xử lý cảnh báo, lỗi chặn và các quy tắc đang chờ tài liệu trước khi phê duyệt.|Resolve warnings, blockers and rules awaiting documents before approving.
 Cần bổ sung đủ tài liệu bắt buộc và xác định các yêu cầu có điều kiện.|Complete the required documents and resolve conditional requirements.
 Tài liệu đang được xử lý. Chờ xử lý xong trước khi phê duyệt.|Documents are still processing. Wait for processing to finish before approving.
@@ -237,6 +259,8 @@ AI gợi ý quy tắc đối soát|AI comparison rule suggestions
 Đăng nhập tài khoản công ty để dùng gợi ý AI.|Sign in with a company account to use AI suggestions.
 Chỉ quản trị công ty được dùng gợi ý AI.|Only company administrators can use AI suggestions.
 Lưu loại hồ sơ trước khi gợi ý quy tắc đối soát.|Save the dossier type before requesting comparison rules.
+AI dùng giấy tờ và vai trò đang chọn để gợi ý quy tắc cho bản nháp.|AI uses the selected documents and roles to suggest rules for this draft.
+Chọn ít nhất một loại giấy tờ trước khi gợi ý quy tắc.|Select at least one document type before requesting rule suggestions.
 Mô tả giấy tờ để AI đề xuất các trường và yêu cầu kiểm tra.|Describe the document so AI can suggest extraction fields and checks.
 AI dùng cấu hình đã lưu để đề xuất quy tắc. Gợi ý được thêm vào các quy tắc đang soạn.|AI uses the saved configuration to suggest rules. Suggestions are added to your draft rules.
 Mô tả cho AI|Description for AI
@@ -727,6 +751,7 @@ Máy chủ gặp lỗi nội bộ.|Internal server error
 const vietnamese = new Map([...english].map(([vi,en])=>[en,vi]));
 
 const patterns = [
+  [/^(\d+) thông tin bắt buộc cần xử lý$/u,(_m,n)=>`${n} required ${Number(n)===1?'item needs':'items need'} attention`],
   [/^(.+): (.+) — (\d+)$/u,(_m,date,status,count)=>`${date}: ${translateText(status)} — ${count}`],
   [/^(.+) không được để trống\.$/u,(_m,label)=>`${translateText(label)} is required.`],
   [/^Xin chào, (.+)$/u,(_m,name)=>`Hello, ${name}`],
