@@ -80,6 +80,41 @@ test('AI failure ends waiting and preserves the editable document draft',async({
   await expect(dialog.getByLabel('Tên hiển thị')).toHaveValue('Giữ bản nháp');await expect(dialog.getByLabel('Tên trường',{exact:true})).toHaveValue('Trường đang soạn');await expect(page.locator('.network-wait-overlay')).toHaveCount(0);
 });
 
+test('AI rules with unconfigured roles are rejected without replacing the draft',async({page})=>{
+  const {calls}=await mockBackend(page,{intercept:({call,reply})=>{
+    if(call.path.endsWith('/comparison-rules/suggestions')){
+      reply({draft:true,configuration_version:1,rules:[{code:'',name:'Quy tắc sai vai trò',left:{document_type:'identity',field_key:'full-name',role:'bên mua'},right:{document_type:'identity',field_key:'full-name',role:'bên bán'},operator:'TEXT_EQUALS',severity:'WARNING'}]});return true;
+    }return false;
+  }});
+  await signIn(page);await openNav(page,'Cấu hình hồ sơ');await page.getByRole('button',{name:'Chỉnh sửa',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  await dialog.getByRole('button',{name:'Thêm quy tắc',exact:true}).click();await dialog.getByLabel('Tên quy tắc').fill('Quy tắc đang soạn');
+  await dialog.getByRole('button',{name:'Gợi ý quy tắc bằng AI',exact:true}).last().click();
+  await expect(dialog.locator('#catalog-ai-error')).toContainText('Gợi ý AI có vai trò chưa được cấu hình');
+  await expect(dialog.getByLabel('Tên quy tắc')).toHaveCount(1);
+  await expect(dialog.getByLabel('Tên quy tắc')).toHaveValue('Quy tắc đang soạn');
+  await expect(dialog.getByRole('button',{name:'Lưu phiên bản',exact:true})).toBeEnabled();
+  expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);
+});
+
+test('rule roles must match the edited document roles before saving',async({page})=>{
+  const {calls}=await mockBackend(page,{intercept:({call,reply})=>{
+    if(call.path==='/api/v1/dossier-types/sale'&&call.method==='PUT'){reply({code:'sale',current_version:2,active:true,definition:JSON.parse(call.body)});return true;}return false;
+  }});
+  await signIn(page);await openNav(page,'Cấu hình hồ sơ');await page.getByRole('button',{name:'Chỉnh sửa',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  await dialog.getByRole('button',{name:'Thêm quy tắc',exact:true}).click();await dialog.getByLabel('Tên quy tắc').fill('Đối chiếu tên');
+  await dialog.getByLabel('Vai trò bên thứ nhất',{exact:true}).fill('bên mua');
+  await dialog.getByRole('button',{name:'Lưu phiên bản',exact:true}).click();
+  await expect(dialog).toContainText('Vai trò trong quy tắc chưa được cấu hình');
+  expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);
+  await expect(dialog.getByLabel('Vai trò bên thứ nhất',{exact:true})).toHaveValue('bên mua');
+  await dialog.getByLabel('Vai trò chủ thể (phân cách bằng dấu phẩy)',{exact:true}).fill('bên mua');
+  await dialog.getByRole('button',{name:'Lưu phiên bản',exact:true}).click();await expect(dialog).toHaveCount(0);
+  const saved=JSON.parse(calls.find(call=>call.method==='PUT').body);
+  expect(saved.documents[0].role).toBe('bên mua');expect(saved.rules[0].left.role).toBe('bên mua');expect(saved.rules[0].right.role).toBe('');
+});
+
 
 test('new dossier form generates configuration without saving first',async({page})=>{
   const {calls}=await mockBackend(page,{intercept:({call,reply})=>{

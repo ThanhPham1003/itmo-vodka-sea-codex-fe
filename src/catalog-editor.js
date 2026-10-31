@@ -40,6 +40,11 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
 
   const sourceOptions = (types, value) => types.map(type => option(type.code, type.name, value)).join('');
   const comparableFields = type => (type?.fields || []).filter(field => operators[field.type]);
+  const configuredRuleRoles = candidateRules => candidateRules.every(rule => ['left','right'].every(side => {
+    const type=rule[`${side}Type`]??rule[side]?.document_type;
+    const role=rule[side]?.role||'';
+    return selectedSources().some(source=>source.code===type)&&(!role||String(document.querySelector('#modal-form').elements.namedItem(`roles-${type}`)?.value||'').split(',').map(value=>value.trim()).includes(role));
+  }));
   const fieldOptions = (type, value, expectedType) => comparableFields(type).filter(field => !expectedType || field.type === expectedType).map(field => option(field.key, field.label, value)).join('');
 
   function fieldRows() {
@@ -153,7 +158,9 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
           return {...original,...base,role,min_count:originals.length>1&&minCount===originals[0].min_count?original?.min_count||minCount:minCount};
         });
       });
-      saved = await demo.saveDossierType({ ...base, documents, rules:readRules() });
+      const nextRules=readRules();
+      if(demo.live&&!configuredRuleRoles(nextRules))throw new Error('Vai trò trong quy tắc chưa được cấu hình cho giấy tờ tương ứng. Kiểm tra mục Vai trò chủ thể và Vai trò bên thứ nhất/bên thứ hai trước khi lưu.');
+      saved = await demo.saveDossierType({ ...base, documents, rules:nextRules });
     }
     closeModal(); await onSaved(saved);
   });
@@ -201,6 +208,7 @@ export function openCatalogEditor({ demo, kind, selected = null, onSaved = () =>
         if(!suggested.length){result.textContent='AI chưa tìm thấy quy tắc phù hợp. Hãy bổ sung mô tả rồi thử lại.';return;}
         const sources=selectedSources();
         if(suggested.some(rule=>[rule.left,rule.right].some(ref=>!sources.find(type=>type.code===ref.document_type)?.fields.some(field=>field.key===ref.field_key))))throw new Error('Gợi ý không khớp giấy tờ hoặc trường đang chọn. Lưu cấu hình mới rồi thử lại.');
+        if(!configuredRuleRoles(suggested))throw new Error('Gợi ý AI có vai trò chưa được cấu hình cho giấy tờ tương ứng. Kiểm tra vai trò chủ thể, lưu cấu hình rồi gợi ý lại.');
         rules=[...previousRules,...suggested];
         container.querySelector('#editor-rules').innerHTML=ruleRows();
         result.textContent='Đã thêm gợi ý quy tắc vào bản nháp. Rà soát trước khi lưu phiên bản.';
