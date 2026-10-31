@@ -136,6 +136,21 @@ test('background completion rejected while an editor is open does not change the
   version=8;const loaded=await service.load({page:'detail',id:did},{background:true,accept:()=>false});
   assert.equal(loaded,false);assert.equal(service.getDossier(did).version,7);
 });
+test('approval conflicts at the same revision explain invalid required fields without replaying the decision',async()=>{
+  let decisions=0;
+  const {service,calls}=setup((path)=>{
+    if(path.endsWith('/decisions')){decisions++;return response(null,409);}
+    return response({...bundle,dossier:{...bundle.dossier,status:'VALID_DOCUMENT',version:14},fields:[{id:'missing',file_id:fid,label:'Signing date',required:true,value:'',validation:'MISSING'}],issues:[{id:'warning',status:'ACKNOWLEDGED',severity:'WARNING'}]});
+  });
+  await service.login('admin','long-password');await service.load({page:'detail',id:did});
+  await assert.rejects(service.review(did,'APPROVE','Checked'),error=>{
+    assert.equal(error.status,409);assert.equal(error.reloadRequired,true);
+    assert.match(error.message,/trường bắt buộc/);assert.doesNotMatch(error.message,/đã thay đổi/i);return true;
+  });
+  assert.equal(decisions,1);assert.equal(service.getDossier(did).version,14);
+  assert.deepEqual(service.getDossier(did).invalidRequiredFields.map(field=>field.label),['Signing date']);
+  assert.equal(JSON.parse(calls.find(call=>call.path.endsWith('/decisions')).init.body).expected_version,14);
+});
 test('nullable dashboard maps, permissions and detail arrays match the 1a3ee15 contract',async()=>{
   const {service}=setup(path=>path.startsWith('/api/v1/dashboard/statuses')
     ?response({metric:'current',totals:null,daily:[{date:'2026-10-31',counts:null}]})

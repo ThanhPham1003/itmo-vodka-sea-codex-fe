@@ -33,8 +33,12 @@ test('disabled, busy and invalid requests never call AI; provider errors are vis
 });
 test('demo answers and citations are local with explicit knowledge version',async()=>{
   const demo=createDemoAssistant();const context=await demo.assistantContext('en');assert.ok(context.knowledge_version.endsWith('.demo'));
-  const reply=await demo.assistantChat({message:'approve',locale:'en'});assert.match(reply.blocks[0].text,/VALID_DOCUMENT/);assert.equal(reply.sources[0].id,'review-readiness');
-  const article=await demo.assistantArticle(reply.sources[0].id,'en');assert.match(article.content,/cannot approve/);
+  const reply=await demo.assistantChat({message:'approve',locale:'en'});assert.match(reply.blocks[0].text,/awaiting review/);assert.equal(reply.sources[0].id,'review-readiness');
+  const article=await demo.assistantArticle(reply.sources[0].id,'en');assert.match(article.content,/has not been approved/);
+  for(const locale of ['vi','en']){
+    const guides=await demo.assistantContext(locale);
+    for(const guide of guides.articles)assert.doesNotMatch(guide.content,/VALID_DOCUMENT|APPROVED_DOCUMENT|dossier:review|company_admin|\bWARNING\b|\bBLOCKER\b|\bPII\b|snapshot/);
+  }
 });
 test('live service uses authenticated same-origin endpoints with extended chat timeout',async()=>{
   const calls=[];const client={request:async(path,options={})=>{calls.push({path,...options});return {data:{enabled:true}};}};

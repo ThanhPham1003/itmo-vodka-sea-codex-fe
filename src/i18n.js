@@ -165,6 +165,18 @@ Sửa|Edit
 Nguồn mô phỏng|Simulated source
 Giá trị nhạy cảm được che mặc định. Thao tác hiện dữ liệu và xem bản gốc được ghi nhật ký.|Sensitive values are masked by default. Reveals and original document views are logged.
 Kết quả đối soát|Reconciliation results
+Xác nhận loại giấy tờ và đối tượng|Confirm document type and subject
+Xác minh trường dữ liệu|Verify extracted field
+Kiểm tra yêu cầu đặc biệt|Check special requirements
+Kiểm tra đối soát|Reconciliation check
+Tài liệu nguồn|Source document
+Cần bổ sung hoặc sửa các trường bắt buộc chưa hợp lệ trong tab Tài liệu.|Complete or correct the invalid required fields in the Documents tab.
+Cần xử lý cảnh báo, lỗi chặn và các quy tắc đang chờ tài liệu trước khi phê duyệt.|Resolve warnings, blockers and rules awaiting documents before approving.
+Cần bổ sung đủ tài liệu bắt buộc và xác định các yêu cầu có điều kiện.|Complete the required documents and resolve conditional requirements.
+Tài liệu đang được xử lý. Chờ xử lý xong trước khi phê duyệt.|Documents are still processing. Wait for processing to finish before approving.
+Hồ sơ chưa sẵn sàng phê duyệt. Kiểm tra trạng thái và yêu cầu bổ sung.|The dossier is not ready for approval. Check its status and requests for changes.
+Máy chủ chưa cho phép phê duyệt hồ sơ. Kiểm tra dữ liệu và kết quả đối soát trước khi gửi lại.|The server has not allowed approval. Check the data and reconciliation results before submitting again.
+Kiểm tra dữ liệu trích xuất|Check extracted data
 So sánh đúng nguồn, đúng đối tượng|Compare the correct sources and subjects
 So sánh đúng nguồn, đúng đối tượng · Kết quả mô phỏng|Compare the correct sources and subjects · Simulated results
 Nguồn thứ nhất|First source

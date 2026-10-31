@@ -49,7 +49,7 @@ export function createAssistantWidget({service,demo=false}){
     if(article){
       const back=control('← '+t.back,t.back,()=>{article=null;articleSequence++;render();draft.focus();},'assistant-back');
       feed.append(back,element('h3','assistant-article-title',article.title),element('p','assistant-article-content',article.content));
-      if(article.knowledge_version)feed.append(element('small','assistant-version',article.knowledge_version));return;
+      return;
     }
     if(!model.turns.length){
       const welcome=element('div','assistant-welcome');welcome.append(element('span','assistant-welcome-symbol','✦'),element('h3','',t.welcome),element('p','',t.intro));feed.append(welcome);

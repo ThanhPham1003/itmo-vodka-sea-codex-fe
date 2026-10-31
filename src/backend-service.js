@@ -1,4 +1,6 @@
 import { ApiError } from './api.js';
+import { reconciliationIssues } from './reconciliation-view.js';
+import { approvalReadiness } from './review-readiness.js';
 
 const array = value => Array.isArray(value) ? value : [];
 const key = value => encodeURIComponent(value);
@@ -64,8 +66,8 @@ export function dossierView(bundle) {
         groups:fileGroups};
     }),
     checklist:array(bundle.checklist).map(req=>({...req,code:req.document_type,triggerReason:req.reason})),
-    issues:array(bundle.issues).map(issue=>({...issue,name:issue.rule_code,
-      left:{label:issue.evidence?.[0]?.field_key,value:issue.evidence?.[0]?.value},right:{label:issue.evidence?.[1]?.field_key,value:issue.evidence?.[1]?.value}})),
+    invalidRequiredFields:fields.filter(field=>field.required&&(!field.value||field.validation!=='VALID')).map(field=>({id:field.id,label:field.label||'Trường bắt buộc',fileId:field.file_id})),
+    issues:reconciliationIssues(bundle.issues,{configuration,files:allFiles,groups,fields}),
     history:array(bundle.decisions).map(decision=>({action:decision.action,description:decision.reason,actor:decision.actor_id,at:decision.created_at})),
     decisions:array(bundle.decisions) };
 }
@@ -97,7 +99,12 @@ export function createBackendService(client) {
     catch (error) {
       if (error.status===409) {
         cache.detail=dossierView(await data(`/dossiers/${key(id)}`));
-        const conflict=new ApiError('Hồ sơ đã thay đổi hoặc không cho phép thao tác. Đã tải phiên bản mới; hãy kiểm tra lại trước khi gửi.',409,error.requestId);
+        let message='Hồ sơ đã thay đổi hoặc không cho phép thao tác. Đã tải phiên bản mới; hãy kiểm tra lại trước khi gửi.';
+        if(suffix==='/decisions'&&body.action==='APPROVE'&&cache.detail.version===expected_version) {
+          const readiness=approvalReadiness(cache.detail);
+          message=readiness.allowed?'Máy chủ chưa cho phép phê duyệt hồ sơ. Kiểm tra dữ liệu và kết quả đối soát trước khi gửi lại.':readiness.message;
+        }
+        const conflict=new ApiError(message,409,error.requestId);
         conflict.reloadRequired=true;throw conflict;
       }
       throw error;
