@@ -82,6 +82,34 @@
 [data-theme=dark] .document-preview {background:#111b28}
 [data-theme=dark] .source-pdf {background:#111b28}
 [data-theme=dark] #toast {background:#263b4a;color:#edf2f7;border:1px solid #456174;box-shadow:0 8px 32px #0006}
+/* Assistant shares the workspace palette and changes theme without clearing chat. */
+[data-theme=dark] .assistant-root {color:#c8d3df}
+[data-theme=dark] .assistant-launcher {background:var(--primary-pale);color:var(--primary-dark);border-color:#3b6959;box-shadow:0 8px 28px #0005}
+[data-theme=dark] .assistant-launcher:hover {background:#244c40;border-color:var(--primary)}
+[data-theme=dark] .assistant-panel {background:var(--surface);border-color:#3a4b60;box-shadow:0 16px 64px #0008}
+[data-theme=dark] .assistant-header {background:linear-gradient(110deg,#193b34,#192d38);border-color:var(--border)}
+[data-theme=dark] .assistant-mark {background:#244339;color:var(--primary-dark);border-color:#3b6959}
+[data-theme=dark] :is(.assistant-heading p,.assistant-scope,.assistant-welcome p,.assistant-library,.assistant-version,.assistant-privacy) {color:var(--muted)}
+[data-theme=dark] .assistant-scope {background:var(--subtle);border-color:var(--border)}
+[data-theme=dark] :is(.assistant-demo,.assistant-disabled) {background:#352f24;color:#e7c991}
+[data-theme=dark] .assistant-icon {color:#b5c8d4}
+[data-theme=dark] .assistant-icon:hover {background:#2b4250;color:var(--ink)}
+[data-theme=dark] :is(.assistant-welcome-symbol,.assistant-back,.assistant-pending) {color:var(--primary-dark)}
+[data-theme=dark] .assistant-turn.user {background:#21483e;color:#e0f5eb}
+[data-theme=dark] .assistant-turn.assistant {background:var(--raised);color:var(--ink);border-color:var(--border)}
+[data-theme=dark] .assistant-citations {border-color:#3a4b60}
+[data-theme=dark] .assistant-citation {background:var(--primary-pale);color:var(--primary-dark);border-color:#31574c}
+[data-theme=dark] .assistant-question {background:var(--subtle);color:#c8d3df;border-color:#3a4b60}
+[data-theme=dark] .assistant-guide {color:#c8d3df;border-color:var(--border)}
+[data-theme=dark] :is(.assistant-question:hover,.assistant-citation:hover,.assistant-guide:hover) {background:#263e49;color:var(--ink);border-color:#58728e}
+[data-theme=dark] .assistant-form {background:var(--subtle);border-color:var(--border)}
+[data-theme=dark] .assistant-composer {background:var(--input);border-color:#3a4b60}
+[data-theme=dark] .assistant-composer:focus-within {border-color:var(--primary);box-shadow:0 0 0 2px #5ed9ae26}
+[data-theme=dark] .assistant-composer textarea {background:transparent;color:var(--ink);box-shadow:none}
+[data-theme=dark] .assistant-send {background:var(--primary);color:#09271f}
+[data-theme=dark] .assistant-send:hover:not(:disabled) {background:#8ae8c6}
+[data-theme=dark] .assistant-error {background:#39252e;color:#ffb5b5}
+[data-theme=dark] :is(.assistant-root button,.assistant-root summary):focus-visible {outline-color:var(--primary-dark)}
 .theme-toggle {gap:7px;border-radius:20px;padding:7px 11px;min-height:34px;line-height:1}
 .theme-toggle svg {width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .theme-toggle .theme-sun {display:none}
