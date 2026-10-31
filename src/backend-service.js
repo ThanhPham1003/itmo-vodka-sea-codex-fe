@@ -97,6 +97,9 @@ export function createBackendService(client) {
   const service = {
     live:true,
     get session() { return actor; },
+    assistantContext:(locale,page,{signal}={})=>data(`/assistant/context${query({locale,page})}`,{signal,track:false}),
+    assistantArticle:(id,locale,{signal}={})=>data(`/assistant/articles/${key(id)}${query({locale})}`,{signal,track:false}),
+    assistantChat:(body,{signal}={})=>data('/assistant/chat',{method:'POST',body,signal,timeoutMs:70000,track:false}),
     get company() { const company=actor?.company;return company?{...company,initials:company.name.split(/\s+/).slice(0,2).map(word=>word[0]).join('')}:null; },
     get pagination() { return cache.page; },
     can(permission) {

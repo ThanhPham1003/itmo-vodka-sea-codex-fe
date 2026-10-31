@@ -17,6 +17,7 @@ export class ApiClient {
     this.#accessToken = token; this.#sessionVersion++; this.#notified = false;
   }
   clearSession() { this.#accessToken = null; this.#sessionVersion++; }
+  get sessionVersion() { return this.#sessionVersion; }
   async request(path, { method = 'GET', body, headers = {}, signal, responseType = 'json', timeoutMs = this.timeoutMs, track = true } = {}) {
     let parsed;
     try {

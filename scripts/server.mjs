@@ -36,7 +36,7 @@ export function createAppServer({ root = process.env.STATIC_ROOT || fileURLToPat
         headers.set('Accept-Encoding','identity');
         const hasBody = !['GET','HEAD'].includes(req.method);
         const response = await fetch(new URL(health ? '/health' : url.pathname + url.search, upstream), {
-          method:req.method, headers, signal:AbortSignal.any([controller.signal,AbortSignal.timeout(health ? Math.min(proxyTimeoutMs,5000) : proxyTimeoutMs)]),
+          method:req.method, headers, signal:AbortSignal.any([controller.signal,AbortSignal.timeout(health ? Math.min(proxyTimeoutMs,5000) : url.pathname === '/api/v1/assistant/chat' ? Math.max(proxyTimeoutMs,65000) : proxyTimeoutMs)]),
           redirect:'manual', ...(hasBody ? {body:req,duplex:'half'} : {})
         });
         // Never follow redirects carrying credentials to another service.
