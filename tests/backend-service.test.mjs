@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiClient } from '../src/api.js';
-import { createBackendService, dossierView, catalogView } from '../src/backend-service.js';
+import { createBackendService, dossierView, catalogView, auditView } from '../src/backend-service.js';
 import { liveDocumentPreview } from '../src/document-view.js';
 import { translateText } from '../src/i18n.js';
 
@@ -11,6 +11,16 @@ const fid='33333333-3333-4333-8333-333333333333';
 const actor={id:uid,company_id:did,full_name:'Test Admin',role:'company_admin',active:true,permissions:['user:manage','dossier:read','dossier:correct','catalog:manage'],company:{id:did,name:'Test Company'}};
 const bundle={dossier:{id:did,title:'Case',version:7,dossier_type:'case',configuration:{documents:[]}},files:[{id:fid,batch_id:uid,original_name:'sample.pdf',source_pages:[1,2]}],document_groups:[],fields:[{id:'field-1',file_id:fid,key:'name',document_group_id:'group-1'},{id:'field-2',file_id:fid,key:'name',document_group_id:'group-2'}],checklist:[],issues:[],decisions:[]};
 const response=(data,status=200)=>new Response(JSON.stringify({code:status,message:'Test response',data}),{status,headers:{'Content-Type':'application/json'}});
+
+test('audit uses server actor names and resolves legacy self events without displaying UUIDs',()=>{
+  const other='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const row={actor_id:other,actor_name:'Nguyễn Văn Bình',resource:'user',resource_id:other,action:'LOGIN'};
+  const view=auditView(row,actor);assert.equal(view.actor,'Nguyễn Văn Bình');assert.equal(view.description,'user · Nguyễn Văn Bình');assert.equal(view.actor_id,other);
+  const self=auditView({...row,actor_id:uid,actor_name:undefined,resource_id:uid},actor);assert.equal(self.actor,'Test Admin');assert.equal(self.description,'user · Test Admin');
+  const missing=auditView({...row,actor_name:''},actor);assert.equal(missing.actor,'');assert.equal(missing.actorIsSystem,false);
+  const system=auditView({...row,actor_id:'00000000-0000-0000-0000-000000000000',actor_name:''},actor);assert.equal(system.actorIsSystem,true);assert.equal(system.actor,'');
+  const company=auditView({...row,resource:'company',resource_id:did},actor);assert.equal(company.description,'company · Test Company');
+});
 function setup(handler=()=>response(null),catalogs={}) {
   const calls=[];
   const client=new ApiClient({fetchImpl:async(path,init)=>{

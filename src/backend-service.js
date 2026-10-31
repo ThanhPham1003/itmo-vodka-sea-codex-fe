@@ -9,6 +9,19 @@ const query = values => {
 };
 const userView = user => ({ ...user, name:user.full_name, userId:user.id, companyId:user.company_id, status:user.active===true?'active':'suspended', permissions:array(user.permissions) });
 
+export function auditView(row,me,members=[]) {
+  const knownName=id=>{
+    const member=members.find(user=>(user.userId||user.id)===id) || ((me?.userId||me?.id)===id?me:null);
+    return member?.full_name?.trim()||member?.name?.trim()||member?.username?.trim()||'';
+  };
+  const isSystem=row.actor_id==='00000000-0000-0000-0000-000000000000';
+  const actorName=isSystem?'':row.actor_name?.trim()||knownName(row.actor_id);
+  let target=row.resource_id;
+  if(row.resource==='user')target=(row.resource_id===row.actor_id?actorName:'')||knownName(row.resource_id)||target;
+  if(row.resource==='company'&&row.resource_id===(me?.companyId||me?.company_id))target=me?.company?.name||target;
+  return {...row,description:row.resource+' · '+target,actor:actorName,actorIsSystem:isSystem,reference:row.dossier_id,at:row.created_at,dossierId:row.dossier_id};
+}
+
 // For the access editor only. Authorization always uses /auth/me permissions.
 export const roleDefaults = {
   broker:['dossier:create','dossier:read','dossier:upload'],
@@ -160,7 +173,7 @@ export function createBackendService(client) {
       } else if (view.page==='audit') {
         const page=await data('/audit-logs'+query({action:view.auditAction,actor_id:view.auditActor,resource_id:view.auditResource,dossier_id:view.auditDossier,
           from:view.auditFrom,to:view.auditTo,limit:20,offset:view.offset||0}),options);
-        next.audit=array(page.items).map(row=>({...row,description:row.resource+' · '+row.resource_id,actor:row.actor_id,reference:row.dossier_id,at:row.created_at,dossierId:row.dossier_id}));
+        next.audit=array(page.items).map(row=>auditView(row,me,next.members));
         next.page={total:page.total,limit:page.limit,offset:page.offset};
       }
       if(signal?.aborted || version!==epoch || !actor || !accept()) return false;
