@@ -251,6 +251,8 @@ AI chưa trả trường trích xuất phù hợp. Hãy bổ sung mô tả rồi
 Đã nhận gợi ý trường. Kiểm tra nội dung bên dưới trước khi lưu phiên bản.|Field suggestions received. Review them below before saving a version.
 AI chưa tìm thấy quy tắc phù hợp. Hãy bổ sung mô tả rồi thử lại.|AI found no suitable rules. Add more detail and try again.
 Gợi ý không khớp giấy tờ hoặc trường đang chọn. Lưu cấu hình mới rồi thử lại.|The suggestions do not match the selected documents or fields. Save the new configuration and try again.
+Gợi ý AI có vai trò chưa được cấu hình cho giấy tờ tương ứng. Kiểm tra vai trò chủ thể, lưu cấu hình rồi gợi ý lại.|The AI suggestions use roles that are not configured for the corresponding documents. Check the subject roles, save the configuration, and request suggestions again.
+Vai trò trong quy tắc chưa được cấu hình cho giấy tờ tương ứng. Kiểm tra mục Vai trò chủ thể và Vai trò bên thứ nhất/bên thứ hai trước khi lưu.|A rule uses a role that is not configured for its document. Check the subject roles and the first/second source roles before saving.
 Đã thêm gợi ý quy tắc vào bản nháp. Rà soát trước khi lưu phiên bản.|Suggested rules were added to your draft. Review them before saving a version.
 Ví dụ: CCCD cần lấy họ tên, số định danh, ngày sinh và ngày hết hạn.|Example: Extract the full name, ID number, birth date and expiry date from an identity card.
 Ví dụ: Đối chiếu họ tên và số định danh chủ sở hữu giữa các giấy tờ.|Example: Compare the owner's full name and ID number across documents.
